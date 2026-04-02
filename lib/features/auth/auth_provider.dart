@@ -1,119 +1,78 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/models/app_models.dart';
+import '../../core/models/app_user.dart';
 
-// In-memory user storage
-final usersProvider = StateNotifierProvider<UsersNotifier, List<AppUser>>((ref) {
-  return UsersNotifier();
+// In-memory user data
+final usersDataProvider = StateProvider<List<AppUser>>((ref) {
+  return [
+    const AppUser(id: 'u1', name: 'Alice Kumar', email: 'alice@spendly.app'),
+    const AppUser(id: 'u2', name: 'Bob Sharma', email: 'bob@spendly.app'),
+    const AppUser(id: 'u3', name: 'Carol Singh', email: 'carol@spendly.app'),
+    const AppUser(id: 'u4', name: 'Dave Patel', email: 'dave@spendly.app'),
+  ];
 });
 
-class UsersNotifier extends StateNotifier<List<AppUser>> {
-  UsersNotifier() : super([]);
-
-  void register(String name, String email, String password) {
-    // Check if email already exists
-    if (state.any((u) => u.email.toLowerCase() == email.toLowerCase())) {
-      throw Exception('Email already registered');
-    }
-    final newUser = AppUser(
-      id: 'u${DateTime.now().millisecondsSinceEpoch}',
-      name: name,
-      email: email,
-    );
-    state = [...state, newUser];
-  }
-
-  AppUser? login(String email, String password) {
-    final user = state.cast<AppUser?>().firstWhere(
-      (u) => u?.email.toLowerCase() == email.toLowerCase(),
-      orElse: () => null,
-    );
-    return user;
-  }
-
-  AppUser? getUserById(String id) {
-    return state.cast<AppUser?>().firstWhere(
-      (u) => u?.id == id,
-      orElse: () => null,
-    );
-  }
-}
-
-// Current authenticated user
 final authProvider = StateNotifierProvider<AuthNotifier, AppUser?>((ref) {
   return AuthNotifier(ref);
 });
 
 class AuthNotifier extends StateNotifier<AppUser?> {
-  final Ref ref;
+  final Ref _ref;
+  AuthNotifier(this._ref) : super(null) {
+    // Auto-login as Alice for demo
+    _autoLogin();
+  }
 
-  AuthNotifier(this.ref) : super(null);
+  void _autoLogin() {
+    final users = _ref.read(usersDataProvider);
+    state = users.first;
+  }
 
   bool get isAuthenticated => state != null;
 
-  void autoLogin() {
-    // Auto-login for demo purposes
-    final users = ref.read(usersProvider);
-    if (users.isNotEmpty) {
-      state = users.first;
-    } else {
-      // Create demo user
-      final demoUser = AppUser(
-        id: 'u1',
-        name: 'Demo User',
-        email: 'demo@example.com',
-      );
-      ref.read(usersProvider.notifier).state = [demoUser];
-      state = demoUser;
-    }
-  }
-
   void login(String email, String password) {
-    if (email.isEmpty || password.isEmpty) {
-      throw Exception('Please enter email and password');
-    }
-    final users = ref.read(usersProvider);
+    final users = _ref.read(usersDataProvider);
     final user = users.cast<AppUser?>().firstWhere(
-      (u) => u?.email.toLowerCase() == email.toLowerCase(),
-      orElse: () => null,
-    );
+          (u) => u?.email.toLowerCase() == email.toLowerCase(),
+          orElse: () => null,
+        );
     if (user == null) {
-      throw Exception('Invalid email or password');
+      throw Exception('No account found with that email.');
     }
     state = user;
   }
 
-  void register(String name, String email, String password, String confirmPassword) {
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
-      throw Exception('Please fill in all fields');
-    }
-    if (password != confirmPassword) {
-      throw Exception('Passwords do not match');
-    }
-    if (password.length < 6) {
-      throw Exception('Password must be at least 6 characters');
-    }
-    if (!email.contains('@')) {
-      throw Exception('Please enter a valid email');
-    }
-
-    final users = ref.read(usersProvider);
+  void register(String name, String email, String password) {
+    final users = _ref.read(usersDataProvider);
     if (users.any((u) => u.email.toLowerCase() == email.toLowerCase())) {
-      throw Exception('Email already registered');
+      throw Exception('Email already in use.');
     }
-
     final newUser = AppUser(
       id: 'u${DateTime.now().millisecondsSinceEpoch}',
-      name: name,
-      email: email,
+      name: name.trim(),
+      email: email.trim(),
     );
-    ref.read(usersProvider.notifier).state = [...users, newUser];
+    _ref.read(usersDataProvider.notifier).state = [...users, newUser];
     state = newUser;
   }
 
   void logout() {
     state = null;
   }
+
+  AppUser? getUserById(String id) {
+    final users = _ref.read(usersDataProvider);
+    return users.cast<AppUser?>().firstWhere(
+          (u) => u?.id == id,
+          orElse: () => null,
+        );
+  }
 }
 
-// Navigation provider
-final currentRouteProvider = StateProvider<String>((ref) => '/');
+// Convenience provider to get a user by ID from anywhere
+final userByIdProvider = Provider.family<AppUser?, String>((ref, id) {
+  final users = ref.watch(usersDataProvider);
+  return users.cast<AppUser?>().firstWhere(
+        (u) => u?.id == id,
+        orElse: () => null,
+      );
+});
