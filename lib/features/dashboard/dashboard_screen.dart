@@ -1,51 +1,450 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dashboard_provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/utils/formatters.dart';
+import '../../core/widgets/shared_widgets.dart';
 import '../auth/auth_provider.dart';
-import '../group/group_provider.dart';
-import '../../core/models/app_models.dart'; 
+import '../settlements/settlement_provider.dart';
+import '../groups/group_provider.dart';
+import '../personal_finance/personal_expense_provider.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final balances = ref.watch(balanceProvider);
-    final groups = ref.watch(groupProvider);
     final user = ref.watch(authProvider);
+    final balance = ref.watch(overallBalanceProvider);
+    final groups = ref.watch(groupProvider);
+    final pendingSettlements = ref.watch(pendingSettlementsProvider);
+    final recentPersonal = ref.watch(personalExpenseProvider);
+
+    final owe = balance['owe'] ?? 0.0;
+    final owed = balance['owed'] ?? 0.0;
+    final net = balance['net'] ?? 0.0;
+
+    final greeting = _getGreeting();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Hi, ${user?.name ?? 'User'}!"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _logout(context, ref),
-            tooltip: 'Logout',
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: CustomScrollView(
+        slivers: [
+          // ─── Hero Header ─────────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 60, 24, 32),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '$greeting,',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              user?.name.split(' ').first ?? 'User',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => _showProfileMenu(context, ref),
+                        child: UserAvatar(
+                          name: user?.name ?? 'User',
+                          userId: user?.id ?? 'u1',
+                          size: 44,
+                        ),
+                      ),
+                    ],
+                  ).animate().fadeIn(duration: 400.ms),
+                  const SizedBox(height: 28),
+                  // Net balance card
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(20),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withAlpha(30)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Net Balance',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          AppFormatters.currency(net.abs()),
+                          style: TextStyle(
+                            color: net >= 0 ? const Color(0xFF34D399) : const Color(0xFFF87171),
+                            fontSize: 36,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -1,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          net >= 0 ? 'You are owed money' : 'You owe money',
+                          style: const TextStyle(
+                            color: Colors.white60,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+                  const SizedBox(height: 16),
+                  // Owe / Owed split
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMiniBalanceCard(
+                          'You Owe',
+                          owe,
+                          const Color(0xFFF87171),
+                          Icons.arrow_upward_rounded,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildMiniBalanceCard(
+                          'Owed to You',
+                          owed,
+                          const Color(0xFF34D399),
+                          Icons.arrow_downward_rounded,
+                        ),
+                      ),
+                    ],
+                  ).animate().fadeIn(delay: 300.ms),
+                ],
+              ),
+            ),
+          ),
+
+          // ─── Quick Actions ────────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionHeader(title: 'Quick Actions'),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      _buildActionTile(
+                        context,
+                        icon: Icons.add_rounded,
+                        label: 'Add\nExpense',
+                        color: SpendlyColors.primary,
+                        onTap: () => context.go('/groups'),
+                      ),
+                      const SizedBox(width: 12),
+                      _buildActionTile(
+                        context,
+                        icon: Icons.group_add_rounded,
+                        label: 'New\nGroup',
+                        color: const Color(0xFF8B5CF6),
+                        onTap: () => context.go('/groups/add'),
+                      ),
+                      const SizedBox(width: 12),
+                      _buildActionTile(
+                        context,
+                        icon: Icons.handshake_rounded,
+                        label: 'Settle\nUp',
+                        color: const Color(0xFF10B981),
+                        onTap: () => context.go('/settlements'),
+                      ),
+                      const SizedBox(width: 12),
+                      _buildActionTile(
+                        context,
+                        icon: Icons.bar_chart_rounded,
+                        label: 'Analytics',
+                        color: const Color(0xFFF59E0B),
+                        onTap: () => context.go('/analytics'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(delay: 400.ms),
+          ),
+
+          // ─── Pending Settlements ──────────────────────────────────────────
+          if (pendingSettlements.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SectionHeader(
+                      title: 'Pending Settlements',
+                      actionLabel: 'View All',
+                      onAction: () => context.go('/settlements'),
+                    ),
+                    const SizedBox(height: 12),
+                    ...pendingSettlements.take(2).map(
+                          (s) => _buildSettlementAlert(context, ref, s),
+                        ),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 500.ms),
+            ),
+
+          // ─── Your Groups ──────────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+              child: SectionHeader(
+                title: 'Your Groups',
+                actionLabel: 'See All',
+                onAction: () => context.go('/groups'),
+              ),
+            ).animate().fadeIn(delay: 550.ms),
+          ),
+          if (groups.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: SpendlyCard(
+                  child: EmptyState(
+                    icon: Icons.group_outlined,
+                    title: 'No groups yet',
+                    subtitle: 'Create a group to start splitting expenses',
+                    actionLabel: 'Create Group',
+                    onAction: () => context.go('/groups/add'),
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final group = groups[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _buildGroupCard(context, ref, group),
+                    ).animate().fadeIn(delay: (600 + index * 80).ms);
+                  },
+                  childCount: groups.take(3).length,
+                ),
+              ),
+            ),
+
+          // ─── Recent Personal Expenses ─────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+              child: SectionHeader(
+                title: 'Recent Spending',
+                actionLabel: 'See All',
+                onAction: () => context.go('/personal'),
+              ),
+            ).animate().fadeIn(delay: 700.ms),
+          ),
+          if (recentPersonal.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: SpendlyCard(
+                  child: EmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'No personal expenses',
+                    subtitle: 'Track your personal spending separately',
+                    actionLabel: 'Add Expense',
+                    onAction: () => context.go('/personal/add'),
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final e = recentPersonal[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: SpendlyCard(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: SpendlyColors.chartColors[
+                                        e.category.index %
+                                            SpendlyColors.chartColors.length]
+                                    .withAlpha(25),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  e.category.emoji,
+                                  style: const TextStyle(fontSize: 20),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    e.description,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    e.category.label,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                            color: SpendlyColors.neutral500),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  AppFormatters.currency(e.amount),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: SpendlyColors.danger),
+                                ),
+                                Text(
+                                  AppFormatters.relativeDate(e.date),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                          color: SpendlyColors.neutral500),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ).animate().fadeIn(delay: (750 + index * 60).ms);
+                  },
+                  childCount: recentPersonal.take(5).length,
+                ),
+              ),
+            ),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 100)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniBalanceCard(
+      String label, double amount, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(15),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withAlpha(20)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 14),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: const TextStyle(color: Colors.white70, fontSize: 11)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            AppFormatters.currency(amount),
+            style: TextStyle(
+                color: color, fontSize: 16, fontWeight: FontWeight.w700),
           ),
         ],
       ),
-      drawer: _buildDrawer(context, ref),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.pushNamed(context, '/add-expense'),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Expense'),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(balanceProvider);
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
+    );
+  }
+
+  Widget _buildActionTile(BuildContext context,
+      {required IconData icon,
+      required String label,
+      required Color color,
+      required VoidCallback onTap}) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: SpendlyCard(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildBalanceRow(balances['owe'] ?? 0.0, balances['owed'] ?? 0.0),
-              const SizedBox(height: 24),
-              _buildQuickActions(context, ref),
-              const SizedBox(height: 24),
-              _buildGroupsSection(context, ref, groups),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withAlpha(20),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),
@@ -53,422 +452,136 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDrawer(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authProvider);
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
+  Widget _buildGroupCard(BuildContext context, WidgetRef ref, group) {
+    return SpendlyCard(
+      onTap: () => context.go('/groups/${group.id}'),
+      padding: const EdgeInsets.all(16),
+      child: Row(
         children: [
-          DrawerHeader(
+          Container(
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor,
+              gradient: SpendlyColors.primaryGradient,
+              borderRadius: BorderRadius.circular(14),
             ),
+            child: Center(
+              child: Text(
+                group.emoji ?? group.name[0],
+                style: const TextStyle(fontSize: 20),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                const CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.person, size: 40, color: Color(0xFF1A3B5D)),
-                ),
-                const SizedBox(height: 12),
                 Text(
-                  user?.name ?? 'User',
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  group.name,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 Text(
-                  user?.email ?? '',
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  '${group.memberIds.length} members',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: SpendlyColors.neutral500),
                 ),
               ],
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.dashboard),
-            title: const Text('Dashboard'),
-            selected: true,
-            onTap: () => Navigator.pop(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.add_circle_outline),
-            title: const Text('Add Expense'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/add-expense');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.account_balance_wallet),
-            title: const Text('Settlement'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/settlement');
-            },
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.red),
-            title: const Text('Logout', style: TextStyle(color: Colors.red)),
-            onTap: () => _logout(context, ref),
-          ),
+          const Icon(Icons.chevron_right_rounded,
+              color: SpendlyColors.neutral400),
         ],
       ),
     );
   }
 
-  Widget _buildQuickActions(BuildContext context, WidgetRef ref) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("Quick Actions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionCard(
-                context,
-                ref,
-                icon: Icons.add_card,
-                label: 'Add Expense',
-                color: Colors.blue,
-                onTap: () => Navigator.pushNamed(context, '/add-expense'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildActionCard(
-                context,
-                ref,
-                icon: Icons.group_add,
-                label: 'New Group',
-                color: Colors.green,
-                onTap: () => _showAddGroupDialog(context, ref),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildActionCard(
-                context,
-                ref,
-                icon: Icons.handshake,
-                label: 'Settle Up',
-                color: Colors.orange,
-                onTap: () => Navigator.pushNamed(context, '/settlement'),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionCard(BuildContext context, WidgetRef ref, {required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withAlpha(25),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: color),
-              ),
-              const SizedBox(height: 8),
-              Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGroupsSection(BuildContext context, WidgetRef ref, List<Group> groups) {
-    if (groups.isEmpty) {
-      return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text("No groups yet. Tap + to add one!",
-            style: TextStyle(color: Colors.grey)),
-        ),
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text("Your Groups", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            TextButton.icon(
-              onPressed: () => _showAddGroupDialog(context, ref),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (groups.isEmpty)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                children: [
-                  Icon(Icons.group_outlined, size: 48, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  const Text("No groups yet", style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  const Text("Create a group to start tracking shared expenses",
-                    style: TextStyle(color: Colors.grey), textAlign: TextAlign.center),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () => _showAddGroupDialog(context, ref),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Create Group'),
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          ...groups.map((group) => _buildGroupCard(context, group, ref)),
-      ],
-    );
-  }
-
-  Widget _buildGroupCard(BuildContext context, Group group, WidgetRef ref) {
+  Widget _buildSettlementAlert(BuildContext context, WidgetRef ref, settlement) {
     final user = ref.read(authProvider);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () => _showGroupOptions(context, ref, group),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: Theme.of(context).primaryColor,
-                child: Text(
-                  group.name.isNotEmpty ? group.name[0].toUpperCase() : 'G',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
+    final isReceiving = settlement.toUserId == user?.id;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: SpendlyCard(
+        backgroundColor: isReceiving
+            ? SpendlyColors.success.withAlpha(10)
+            : SpendlyColors.warning.withAlpha(10),
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Icon(
+              isReceiving
+                  ? Icons.arrow_circle_down_rounded
+                  : Icons.arrow_circle_up_rounded,
+              color: isReceiving ? SpendlyColors.success : SpendlyColors.warning,
+              size: 36,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                isReceiving
+                    ? 'Incoming payment of ${AppFormatters.currency(settlement.amount)}'
+                    : 'You owe ${AppFormatters.currency(settlement.amount)}',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w600),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(group.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                    const SizedBox(height: 4),
-                    Text(
-                      group.description.isNotEmpty 
-                          ? group.description 
-                          : '${group.memberIds.length} member${group.memberIds.length != 1 ? 's' : ''}',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
-            ],
-          ),
+            ),
+            StatusBadge.pending(),
+          ],
         ),
       ),
     );
   }
 
-  void _showGroupOptions(BuildContext context, WidgetRef ref, Group group) {
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  void _showProfileMenu(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.add_circle),
-              title: const Text('Add Expense'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/add-expense');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.person_add),
-              title: const Text('Add Members'),
-              onTap: () {
-                Navigator.pop(context);
-                _showAddMemberDialog(context, ref, group);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.visibility),
-              title: const Text('View Details'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/group-detail');
-              },
-            ),
-            if (group.createdById == ref.read(authProvider)?.id)
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Delete Group', style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.pop(context);
-                  ref.read(groupProvider.notifier).removeGroup(group.id);
-                },
+            const SizedBox(height: 8),
+            Container(
+              width: 32,
+              height: 4,
+              decoration: BoxDecoration(
+                color: SpendlyColors.neutral300,
+                borderRadius: BorderRadius.circular(2),
               ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAddMemberDialog(BuildContext context, WidgetRef ref, Group group) {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add Member'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Member Name/Email',
-            hintText: 'Enter name or email',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                final updatedGroup = Group(
-                  id: group.id,
-                  name: group.name,
-                  description: group.description,
-                  createdById: group.createdById,
-                  memberIds: [...group.memberIds, controller.text.trim()],
-                  createdAt: group.createdAt,
-                );
-                ref.read(groupProvider.notifier).updateGroup(updatedGroup);
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: const Text('Profile'),
+              subtitle: Text(ref.read(authProvider)?.email ?? ''),
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout, color: SpendlyColors.danger),
+              title: const Text('Logout',
+                  style: TextStyle(color: SpendlyColors.danger)),
+              onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Member added!')),
-                );
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
-  }
-
-  void _logout(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              ref.read(authProvider.notifier).logout();
-              Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddGroupDialog(BuildContext context, WidgetRef ref) {
-    final nameController = TextEditingController();
-    final descriptionController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create New Group'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Group Name',
-                hintText: 'e.g., Trip to Paris',
-                border: OutlineInputBorder(),
-              ),
+                ref.read(authProvider.notifier).logout();
+                context.go('/login');
+              },
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-                hintText: 'e.g., Summer 2024 vacation',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.trim().isNotEmpty) {
-                final user = ref.read(authProvider);
-                final newGroup = Group(
-                  id: 'g${DateTime.now().millisecondsSinceEpoch}',
-                  name: nameController.text.trim(),
-                  description: descriptionController.text.trim(),
-                  createdById: user?.id ?? 'unknown',
-                  memberIds: [user?.id ?? 'unknown'],
-                  createdAt: DateTime.now(),
-                );
-                ref.read(groupProvider.notifier).addGroup(newGroup);
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
       ),
-    );
-  }
-
-  Widget _buildBalanceRow(double owe, double owed) {
-    return Row(
-      children: [
-        Expanded(child: Card(child: ListTile(title: const Text("Owe"), subtitle: Text("\$$owe", style: const TextStyle(color: Colors.red))))),
-        const SizedBox(width: 10),
-        Expanded(child: Card(child: ListTile(title: const Text("Owed"), subtitle: Text("\$$owed", style: const TextStyle(color: Colors.green))))),
-      ],
     );
   }
 }
