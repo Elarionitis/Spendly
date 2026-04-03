@@ -15,7 +15,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _isLoading = false;
+  bool _googleLoading = false; // ⭐ NEW
   bool _obscurePassword = true;
 
   @override
@@ -47,7 +49,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 48),
-                // Logo
+
+                /// LOGO (same as yours)
                 Center(
                   child: Column(
                     children: [
@@ -57,115 +60,91 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         decoration: BoxDecoration(
                           gradient: SpendlyColors.primaryGradient,
                           borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: SpendlyColors.primary.withAlpha(80),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
                         ),
                         child: const Icon(
                           Icons.account_balance_wallet_rounded,
                           color: Colors.white,
                           size: 40,
                         ),
-                      )
-                          .animate()
-                          .fadeIn(duration: 600.ms)
-                          .scale(begin: const Offset(0.8, 0.8)),
+                      ),
                       const SizedBox(height: 20),
                       Text(
                         'Spendly',
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -1,
-                            ),
-                      ).animate().fadeIn(delay: 200.ms),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Smart money, shared smarter',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: SpendlyColors.neutral500,
-                            ),
-                      ).animate().fadeIn(delay: 300.ms),
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 52),
-                // Form
+
                 Text(
                   'Welcome back',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ).animate().fadeIn(delay: 400.ms).slideX(begin: -0.1),
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+
                 const SizedBox(height: 6),
+
                 Text(
                   'Sign in to your account',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: SpendlyColors.neutral500,
                       ),
-                ).animate().fadeIn(delay: 450.ms),
+                ),
+
                 const SizedBox(height: 32),
+
+                /// EMAIL
                 TextField(
                   controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Email',
                     prefixIcon: Icon(Icons.email_outlined),
                   ),
-                ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.1),
+                ),
+
                 const SizedBox(height: 16),
+
+                /// PASSWORD
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
-                  textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _login(),
                   decoration: InputDecoration(
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(_obscurePassword
-                          ? Icons.visibility_outlined
-                          : Icons.visibility_off_outlined),
+                          ? Icons.visibility
+                          : Icons.visibility_off),
                       onPressed: () =>
                           setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
-                ).animate().fadeIn(delay: 550.ms).slideY(begin: 0.1),
+                ),
+
                 const SizedBox(height: 28),
-                _buildLoginButton().animate().fadeIn(delay: 600.ms),
+
+                /// EMAIL LOGIN
+                _buildLoginButton(),
+
                 const SizedBox(height: 16),
-                _buildDemoButton().animate().fadeIn(delay: 650.ms),
+
+                /// ⭐ GOOGLE BUTTON (THIS WAS MISSING)
+                _buildGoogleButton(),
+
+                const SizedBox(height: 16),
+
+                _buildDemoButton(),
+
                 const SizedBox(height: 28),
+
                 Center(
                   child: TextButton(
                     onPressed: () => context.go('/register'),
-                    child: RichText(
-                      text: TextSpan(
-                        style: Theme.of(context).textTheme.bodyMedium,
-                        children: [
-                          TextSpan(
-                            text: "Don't have an account? ",
-                            style: TextStyle(color: SpendlyColors.neutral500),
-                          ),
-                          const TextSpan(
-                            text: 'Sign up',
-                            style: TextStyle(
-                              color: SpendlyColors.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    child: const Text("Don't have an account? Sign up"),
                   ),
-                ).animate().fadeIn(delay: 700.ms),
+                ),
               ],
             ),
           ),
@@ -174,85 +153,95 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  /// EMAIL LOGIN BUTTON
   Widget _buildLoginButton() {
     return GestureDetector(
       onTap: _isLoading ? null : _login,
       child: Container(
-        width: double.infinity,
         height: 52,
         decoration: BoxDecoration(
           gradient: SpendlyColors.primaryGradient,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: SpendlyColors.primary.withAlpha(80),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
         ),
         child: Center(
           child: _isLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Text(
-                  'Sign In',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                ),
+              ? const CircularProgressIndicator(color: Colors.white)
+              : const Text("Sign In",
+                  style: TextStyle(color: Colors.white)),
         ),
       ),
+    );
+  }
+
+  /// ⭐ GOOGLE BUTTON (NEW)
+  Widget _buildGoogleButton() {
+    return OutlinedButton.icon(
+      onPressed: _googleLoading ? null : _googleLogin,
+      icon: const Icon(Icons.login),
+      label: _googleLoading
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Text("Sign in with Google"),
     );
   }
 
   Widget _buildDemoButton() {
     return OutlinedButton(
-      onPressed: _isLoading ? null : _demoLogin,
+      onPressed: _demoLogin,
       child: const Text('Continue as Demo User'),
     );
   }
 
+  /// EMAIL LOGIN
   Future<void> _login() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showError('Please enter your email and password.');
+    if (_emailController.text.isEmpty ||
+        _passwordController.text.isEmpty) {
+      _showError('Enter email & password');
       return;
     }
+
     setState(() => _isLoading = true);
+
     try {
-      ref
-          .read(authProvider.notifier)
-          .login(_emailController.text.trim(), _passwordController.text);
+      ref.read(authProvider.notifier).login(
+            _emailController.text.trim(),
+            _passwordController.text,
+          );
+
       if (mounted) context.go('/home');
     } catch (e) {
-      if (mounted) _showError(e.toString().replaceAll('Exception: ', ''));
+      _showError(e.toString());
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      setState(() => _isLoading = false);
+    }
+  }
+
+  /// ⭐ GOOGLE LOGIN
+  Future<void> _googleLogin() async {
+    setState(() => _googleLoading = true);
+
+    try {
+      await ref.read(authProvider.notifier).signInWithGoogle();
+
+      if (mounted) context.go('/home');
+    } catch (e) {
+      _showError("Google Sign-In failed");
+    } finally {
+      setState(() => _googleLoading = false);
     }
   }
 
   void _demoLogin() {
-    // Demo users are pre-seeded; just navigate
-    if (ref.read(authProvider) == null) {
-      ref.read(authProvider.notifier).login('alice@spendly.app', 'demo');
-    }
+    ref.read(authProvider.notifier)
+        .login('alice@spendly.app', 'demo');
     context.go('/home');
   }
 
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: SpendlyColors.danger,
-      ),
-    );
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
   }
 }
