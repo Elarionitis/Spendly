@@ -1,38 +1,62 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../features/auth/auth_provider.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_screen.dart';
+
 import '../../features/dashboard/dashboard_screen.dart';
+
 import '../../features/groups/groups_screen.dart';
 import '../../features/groups/group_detail_screen.dart';
 import '../../features/groups/add_group_expense_screen.dart';
 import '../../features/groups/add_group_screen.dart';
 import '../../features/groups/group_settings_screen.dart';
+
 import '../../features/expenses/transaction_detail_screen.dart';
+
 import '../../features/personal_finance/personal_expenses_screen.dart';
 import '../../features/personal_finance/add_personal_expense_screen.dart';
+
 import '../../features/analytics/analytics_screen.dart';
+
 import '../../features/settlements/settlements_screen.dart';
 import '../../features/settlements/settle_up_screen.dart';
+
 import '../../features/friends/friends_screen.dart';
 import '../../features/friends/friend_detail_screen.dart';
+
 import '../../features/activity/activity_screen.dart';
+
 import '../../features/account/account_screen.dart';
+
 import '../../features/shell/app_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
+  final user = ref.watch(authProvider); // ✅ FIX (watch instead of read)
+
   return GoRouter(
-    initialLocation: '/home',
+    initialLocation: '/login',
+
     redirect: (context, state) {
-      final isLoggedIn = ref.read(authProvider) != null;
+      final isLoggedIn = user != null;
+
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
 
-      if (!isLoggedIn && !isAuthRoute) return '/login';
-      if (isLoggedIn && isAuthRoute) return '/home';
+      // ❌ Not logged in → go to login
+      if (!isLoggedIn && !isAuthRoute) {
+        return '/login';
+      }
+
+      // ✅ Logged in → prevent going back to login/register
+      if (isLoggedIn && isAuthRoute) {
+        return '/home';
+      }
+
       return null;
     },
+
     routes: [
       GoRoute(
         path: '/login',
@@ -44,17 +68,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'register',
         builder: (context, state) => const RegisterScreen(),
       ),
+
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),
         routes: [
-          // ── Home tab ───────────────────────────────────────────────────
           GoRoute(
             path: '/home',
             name: 'home',
             builder: (context, state) => const DashboardScreen(),
           ),
 
-          // ── Groups tab ──────────────────────────────────────────────────
           GoRoute(
             path: '/groups',
             name: 'groups',
@@ -96,7 +119,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                       final groupId = state.pathParameters['id']!;
                       final expenseId = state.pathParameters['expenseId']!;
                       return TransactionDetailScreen(
-                          groupId: groupId, expenseId: expenseId);
+                        groupId: groupId,
+                        expenseId: expenseId,
+                      );
                     },
                   ),
                 ],
@@ -104,7 +129,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // ── Friends tab ────────────────────────────────────────────────
           GoRoute(
             path: '/friends',
             name: 'friends',
@@ -121,21 +145,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // ── Activity tab ───────────────────────────────────────────────
           GoRoute(
             path: '/activity',
             name: 'activity',
             builder: (context, state) => const ActivityScreen(),
           ),
 
-          // ── Account tab ────────────────────────────────────────────────
           GoRoute(
             path: '/account',
             name: 'account',
             builder: (context, state) => const AccountScreen(),
           ),
 
-          // ── Secondary routes (accessible from Account tab & deep links) ─
           GoRoute(
             path: '/personal',
             name: 'personal',
@@ -152,16 +173,19 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+
           GoRoute(
             path: '/analytics',
             name: 'analytics',
             builder: (context, state) => const AnalyticsScreen(),
           ),
+
           GoRoute(
             path: '/settlements',
             name: 'settlements',
             builder: (context, state) => const SettlementsScreen(),
           ),
+
           GoRoute(
             path: '/settle',
             name: 'settle',
