@@ -1,3 +1,4 @@
+
 # Spendly
 
 [![Flutter Version](https://img.shields.io/badge/Flutter-%3E%3D3.3.0-blue.svg)](https://flutter.dev)
@@ -93,32 +94,30 @@ lib/
 ### Installation
 
 1.  **Clone the repository**
-    ```bash
+    bash
     git clone https://github.com/Elarionitis/Spendly.git
     cd spendly
-    ```
+    
 
 2.  **Install dependencies**
-    ```bash
+    bash
     flutter pub get
-    ```
-
-3.  **Run the application**
-    ```bash
-    flutter run
-    ```
     
-4.  **Firebase Setup**
+
+3.  **Firebase Setup**
     *   Create a project in the [Firebase Console](https://console.firebase.google.com/).
     *   Add Android/iOS apps to your Firebase project.
     *   Download `google-services.json` (Android) and `GoogleService-Info.plist` (iOS).
     *   Place them in `android/app/` and `ios/Runner/` respectively.
     *   Alternatively, use the FlutterFire CLI:
-        ```bash
+        bash
         flutterfire configure
-        ```
----
+        
 
+4.  **Run the application**
+    bash
+    flutter run
+    
 ## 📖 Usage
 
 ### State Management Example (Riverpod)
