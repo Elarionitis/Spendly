@@ -2,84 +2,40 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/settlement.dart';
 import '../../core/models/enums.dart';
 import '../../core/utils/debt_simplifier.dart';
+import '../../core/repositories/repository_providers.dart';
+import '../../core/repositories/settlement_repository.dart';
 import '../auth/auth_provider.dart';
 import '../groups/group_provider.dart';
 
+// ─── Settlement Notifier ──────────────────────────────────────────────────────
+
 final settlementProvider =
     StateNotifierProvider<SettlementNotifier, List<Settlement>>((ref) {
-  return SettlementNotifier(ref);
+  return SettlementNotifier(ref.watch(settlementRepositoryProvider), ref);
 });
 
 class SettlementNotifier extends StateNotifier<List<Settlement>> {
+  final SettlementRepository _repo;
   final Ref _ref;
 
-  SettlementNotifier(this._ref) : super([]) {
-    _seedData();
+  SettlementNotifier(this._repo, this._ref) : super([]) {
+    final userId = _ref.read(authProvider)?.id;
+    if (userId != null) {
+      _repo.watchSettlements(userId).listen((settlements) => state = settlements);
+    }
   }
 
-  void _seedData() {
-    final userId = _ref.read(authProvider)?.id ?? 'u1';
-    final now = DateTime.now();
-    state = [
-      Settlement(
-        id: 's1',
-        fromUserId: 'u2',
-        toUserId: userId,
-        amount: 6000,
-        status: SettlementStatus.pendingVerification,
-        createdAt: now.subtract(const Duration(days: 2)),
-        transactionId: 'TXN12345678',
-        groupId: 'g1',
-      ),
-      Settlement(
-        id: 's2',
-        fromUserId: userId,
-        toUserId: 'u3',
-        amount: 2875,
-        status: SettlementStatus.verified,
-        createdAt: now.subtract(const Duration(days: 10)),
-        transactionId: 'TXN87654321',
-        groupId: 'g1',
-      ),
-      Settlement(
-        id: 's3',
-        fromUserId: 'u4',
-        toUserId: userId,
-        amount: 1500,
-        status: SettlementStatus.verified,
-        createdAt: now.subtract(const Duration(days: 20)),
-        groupId: 'g3',
-      ),
-    ];
-  }
+  Future<void> initiateSettlement(Settlement settlement) =>
+      _repo.addSettlement(settlement);
 
-  void initiateSettlement(Settlement settlement) {
-    state = [settlement, ...state];
-  }
+  Future<void> verify(String id) =>
+      _repo.updateStatus(id, SettlementStatus.verified);
 
-  void verify(String id) {
-    state = [
-      for (final s in state)
-        if (s.id == id) s.copyWith(status: SettlementStatus.verified) else s,
-    ];
-  }
+  Future<void> reject(String id, {String? reason}) =>
+      _repo.updateStatus(id, SettlementStatus.rejected, rejectionReason: reason);
 
-  void reject(String id, {String? reason}) {
-    state = [
-      for (final s in state)
-        if (s.id == id)
-          s.copyWith(status: SettlementStatus.rejected, rejectionReason: reason)
-        else
-          s,
-    ];
-  }
-
-  void updateTransactionId(String id, String transactionId) {
-    state = [
-      for (final s in state)
-        if (s.id == id) s.copyWith(transactionId: transactionId) else s,
-    ];
-  }
+  Future<void> updateTransactionId(String id, String transactionId) =>
+      _repo.updateTransactionId(id, transactionId);
 }
 
 // ─── Derived: net balance across all groups ───────────────────────────────────
@@ -104,7 +60,6 @@ final overallBalanceProvider = Provider<Map<String, double>>((ref) {
     }
   }
 
-  // Reduce balances by verified settlements
   for (final s in settlements.where((s) => s.isVerified)) {
     if (s.fromUserId == user.id) owe -= s.amount;
     if (s.toUserId == user.id) owed -= s.amount;
@@ -113,17 +68,11 @@ final overallBalanceProvider = Provider<Map<String, double>>((ref) {
   owe = owe < 0 ? 0 : owe;
   owed = owed < 0 ? 0 : owed;
 
-  return {
-    'owe': owe,
-    'owed': owed,
-    'net': owed - owe,
-  };
+  return {'owe': owe, 'owed': owed, 'net': owed - owe};
 });
 
 // ─── Derived: per-friend net balance ─────────────────────────────────────────
-/// Returns a map of userId → net amount.
-/// Positive = that person owes current user.
-/// Negative = current user owes that person.
+
 final friendBalanceProvider = Provider<Map<String, double>>((ref) {
   final user = ref.watch(authProvider);
   if (user == null) return {};
@@ -137,28 +86,20 @@ final friendBalanceProvider = Provider<Map<String, double>>((ref) {
     balance[friendId] = (balance[friendId] ?? 0) + amount;
   }
 
-  // From group expenses
   for (final ex in expenses) {
     if (ex.paidById == user.id) {
-      // Current user paid, others owe them
       for (final entry in ex.splitDetails.entries) {
-        if (entry.key != user.id) {
-          addBalance(entry.key, entry.value); // friend owes us
-        }
+        if (entry.key != user.id) addBalance(entry.key, entry.value);
       }
     } else if (ex.splitDetails.containsKey(user.id)) {
-      // Current user owes the payer
-      addBalance(ex.paidById, -ex.splitDetails[user.id]!); // we owe payer
+      addBalance(ex.paidById, -ex.splitDetails[user.id]!);
     }
   }
 
-  // Adjust by verified settlements
   for (final s in settlements.where((s) => s.isVerified)) {
     if (s.fromUserId == user.id) {
-      // We paid some friend
-      addBalance(s.toUserId, s.amount); // reduces what they owed us, or reduces what we owe
+      addBalance(s.toUserId, s.amount);
     } else if (s.toUserId == user.id) {
-      // A friend paid us
       addBalance(s.fromUserId, -s.amount);
     }
   }
@@ -181,23 +122,21 @@ final settlementsWithFriendProvider =
     ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 });
 
-// ─── Derived: debt simplification suggestions ─────────────────────────────────
+// ─── Derived: debt simplification ────────────────────────────────────────────
 
 final debtSuggestionsProvider =
     Provider.family<List<DebtSuggestion>, String>((ref, groupId) {
   final expenses = ref.watch(groupExpensesByGroupProvider(groupId));
-  final group = ref.watch(groupProvider).firstWhere(
-        (g) => g.id == groupId,
-        orElse: () => throw Exception('Group not found'),
-      );
-
-  // Respect the group's smart split setting
+  final groups = ref.watch(groupProvider);
+  final group = groups.firstWhere(
+    (g) => g.id == groupId,
+    orElse: () => throw Exception('Group not found'),
+  );
   if (!group.smartSplitEnabled) return [];
-
   return DebtSimplifier.simplify(expenses, group.memberIds);
 });
 
-// ─── User's pending settlements ───────────────────────────────────────────────
+// ─── User's settlements ───────────────────────────────────────────────────────
 
 final userSettlementsProvider = Provider<List<Settlement>>((ref) {
   final user = ref.watch(authProvider);

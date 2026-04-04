@@ -83,7 +83,8 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider);
     final balances = ref.watch(friendBalanceProvider);
-    final users = ref.watch(usersDataProvider);
+    final usersAsync = ref.watch(allUsersProvider);
+    final users = usersAsync.value ?? [];
     final cs = Theme.of(context).colorScheme;
 
     // All known friends (from groups) except self
