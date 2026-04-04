@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import '../../core/services/cloudinary_service.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/models/group_expense.dart';
 import '../../core/models/enums.dart';
@@ -29,6 +32,8 @@ class _AddGroupExpenseScreenState
   ExpenseCategory _category = ExpenseCategory.other;
   Set<String> _selectedMembers = {};
   final Map<String, TextEditingController> _splitControllers = {};
+  String? _receiptUrl;
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -52,6 +57,29 @@ class _AddGroupExpenseScreenState
       c.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _pickReceipt() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.camera, imageQuality: 60);
+    
+    if (image == null) return;
+
+    setState(() => _isUploading = true);
+    try {
+      final url = await ref.read(cloudinaryServiceProvider).uploadImage(File(image.path));
+      if (url != null) {
+        setState(() => _receiptUrl = url);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to upload receipt')),
+          );
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
   }
 
   @override
@@ -202,18 +230,51 @@ class _AddGroupExpenseScreenState
             // ── Split Preview ─────────────────────────────────────────────────
             if (_selectedMembers.isNotEmpty && amount > 0)
               _buildSplitPreview(amount, user?.id ?? ''),
+            // ── Receipt ──────────────────────────────────────────────────────
+            Text('Receipt (Optional)', style: AppTextStyles.sectionLabel()),
+            const SizedBox(height: 10),
+            if (_receiptUrl != null)
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(_receiptUrl!, height: 120, width: 120, fit: BoxFit.cover),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _receiptUrl = null),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                        child: const Icon(Icons.close, color: Colors.white, size: 16),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              OutlinedButton.icon(
+                onPressed: _isUploading ? null : _pickReceipt,
+                icon: _isUploading 
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.camera_alt_outlined),
+                label: Text(_isUploading ? 'Uploading...' : 'Scan Receipt'),
+              ),
             const SizedBox(height: 32),
 
             // ── Save Button ──────────────────────────────────────────────────
             GestureDetector(
-              onTap: _saveExpense,
+              onTap: _isUploading ? null : _saveExpense,
               child: Container(
                 width: double.infinity,
                 height: 52,
                 decoration: BoxDecoration(
-                  gradient: SpendlyColors.primaryGradient,
+                  gradient: _isUploading ? null : SpendlyColors.primaryGradient,
+                  color: _isUploading ? SpendlyColors.neutral300 : null,
                   borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
+                  boxShadow: _isUploading ? null : [
                     BoxShadow(
                       color: SpendlyColors.primary.withAlpha(80),
                       blurRadius: 16,
@@ -223,7 +284,7 @@ class _AddGroupExpenseScreenState
                 ),
                 child: Center(
                   child: Text(
-                    'Save Expense',
+                    _isUploading ? 'Please wait...' : 'Save Expense',
                     style: AppTextStyles.button().copyWith(color: Colors.white),
                   ),
                 ),
@@ -421,6 +482,7 @@ class _AddGroupExpenseScreenState
       splitType: _splitType,
       category: _category,
       date: DateTime.now(),
+      imageUrl: _receiptUrl,
     );
 
     ref.read(groupExpenseProvider.notifier).addExpense(expense);

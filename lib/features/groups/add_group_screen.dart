@@ -38,7 +38,8 @@ class _AddGroupScreenState extends ConsumerState<AddGroupScreen> {
   @override
   Widget build(BuildContext context) {
     final currentUser = ref.watch(authProvider);
-    final allUsers = ref.watch(usersDataProvider);
+    final allUsersAsync = ref.watch(allUsersProvider);
+    final allUsers = allUsersAsync.value ?? [];
     final otherUsers = allUsers.where((u) => u.id != currentUser?.id).toList();
 
     return Scaffold(

@@ -26,7 +26,8 @@ class GroupSettingsScreen extends ConsumerWidget {
     final group = groups[groupIdx];
     final user = ref.watch(authProvider);
     final netBalances = ref.watch(groupNetBalanceProvider(groupId));
-    final allUsers = ref.watch(usersDataProvider);
+    final allUsersAsync = ref.watch(allUsersProvider);
+    final allUsers = allUsersAsync.value ?? [];
 
     return Scaffold(
       appBar: AppBar(title: const Text('Group Settings')),

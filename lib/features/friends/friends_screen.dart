@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
 import '../auth/auth_provider.dart';
+import '../groups/group_provider.dart';
 import '../settlements/settlement_provider.dart';
 
 class FriendsScreen extends ConsumerWidget {
@@ -12,12 +13,7 @@ class FriendsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authProvider);
-    final users = ref.watch(usersDataProvider);
-    final balances = ref.watch(friendBalanceProvider);
-
-    // All known friends (all users except self)
-    final friends = users.where((u) => u.id != user?.id).toList();
+    final friends = ref.watch(friendsProvider);
 
     // Overall owe / owed
     double totalOwe = 0;
@@ -86,6 +82,8 @@ class FriendsScreen extends ConsumerWidget {
                       return _FriendTile(
                         userId: friend.id,
                         name: friend.name,
+                        avatarUrl: friend.avatarUrl,
+                        isVerified: friend.isVerified,
                         balance: balance,
                         onTap: () => context.go('/friends/${friend.id}'),
                         onSettle: () =>
@@ -136,6 +134,8 @@ class _SummaryChip extends StatelessWidget {
 class _FriendTile extends StatelessWidget {
   final String userId;
   final String name;
+  final String? avatarUrl;
+  final bool isVerified;
   final double balance; // positive: they owe you; negative: you owe them
   final VoidCallback onTap;
   final VoidCallback onSettle;
@@ -143,6 +143,8 @@ class _FriendTile extends StatelessWidget {
   const _FriendTile({
     required this.userId,
     required this.name,
+    this.avatarUrl,
+    this.isVerified = false,
     required this.balance,
     required this.onTap,
     required this.onSettle,
@@ -162,7 +164,12 @@ class _FriendTile extends StatelessWidget {
       onTap: onTap,
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      leading: UserAvatar(name: name, userId: userId, size: 44),
+      leading: UserAvatar(
+          name: name,
+          userId: userId,
+          size: 44,
+          avatarUrl: avatarUrl,
+          isVerified: isVerified),
       title: Text(name,
           style: AppTextStyles.bodyPrimary()
               .copyWith(fontWeight: FontWeight.w700)),
