@@ -103,7 +103,12 @@ lib/
     flutter pub get
     ```
 
-3.  **Firebase Setup**
+3.  **Run the application**
+    ```bash
+    flutter run
+    ```
+    
+4.  **Firebase Setup**
     *   Create a project in the [Firebase Console](https://console.firebase.google.com/).
     *   Add Android/iOS apps to your Firebase project.
     *   Download `google-services.json` (Android) and `GoogleService-Info.plist` (iOS).
@@ -112,12 +117,6 @@ lib/
         ```bash
         flutterfire configure
         ```
-
-4.  **Run the application**
-    ```bash
-    flutter run
-    ```
-
 ---
 
 ## 📖 Usage
