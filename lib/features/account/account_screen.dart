@@ -25,7 +25,12 @@ class AccountScreen extends ConsumerWidget {
               children: [
                 Stack(
                   children: [
-                    UserAvatar(name: user.name, userId: user.id, size: 64),
+                    UserAvatar(
+                        name: user.name,
+                        userId: user.id,
+                        size: 64,
+                        avatarUrl: user.avatarUrl,
+                        isVerified: user.isVerified),
                     Positioned(
                       bottom: 0,
                       right: 0,
@@ -46,21 +51,31 @@ class AccountScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(user.name,
-                          style: AppTextStyles.heading2()),
+                      Row(
+                        children: [
+                          Text(user.name,
+                              style: AppTextStyles.heading2()),
+                          if (user.isVerified) ...[
+                            const SizedBox(width: 6),
+                            const Icon(Icons.verified,
+                                color: SpendlyColors.primary, size: 18),
+                          ],
+                        ],
+                      ),
                       const SizedBox(height: 2),
                       Text(user.email,
                           style: AppTextStyles.bodySecondary()),
+                      if (user.bio != null && user.bio!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(user.bio!,
+                            style: AppTextStyles.caption()),
+                      ],
                     ],
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Edit profile coming soon')),
-                    );
-                  },
+                  onPressed: () => context.push('/account/edit'),
                 ),
               ],
             ),
@@ -73,17 +88,17 @@ class AccountScreen extends ConsumerWidget {
           _SettingsTile(
             icon: Icons.account_balance_wallet_outlined,
             label: 'Personal Expenses',
-            onTap: () => context.go('/personal'),
+            onTap: () => context.push('/personal'),
           ),
           _SettingsTile(
             icon: Icons.handshake_outlined,
             label: 'Settlements',
-            onTap: () => context.go('/settlements'),
+            onTap: () => context.push('/settlements'),
           ),
           _SettingsTile(
             icon: Icons.bar_chart_rounded,
             label: 'Analytics',
-            onTap: () => context.go('/analytics'),
+            onTap: () => context.push('/analytics'),
           ),
 
           const SizedBox(height: 12),
