@@ -1,6 +1,9 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
+final cloudinaryServiceProvider = Provider((ref) => CloudinaryService());
 
 class CloudinaryService {
   final String cloudName = "dqrrzwb59";
