@@ -29,11 +29,12 @@ import '../../features/friends/friend_detail_screen.dart';
 import '../../features/activity/activity_screen.dart';
 
 import '../../features/account/account_screen.dart';
+import '../../features/account/edit_profile_screen.dart';
 
 import '../../features/shell/app_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final user = ref.watch(authProvider); // ✅ FIX (watch instead of read)
+  final user = ref.watch(authProvider); // 
 
   return GoRouter(
     initialLocation: '/login',
@@ -44,12 +45,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuthRoute = state.matchedLocation == '/login' ||
           state.matchedLocation == '/register';
 
-      // ❌ Not logged in → go to login
       if (!isLoggedIn && !isAuthRoute) {
         return '/login';
       }
 
-      // ✅ Logged in → prevent going back to login/register
       if (isLoggedIn && isAuthRoute) {
         return '/home';
       }
@@ -155,6 +154,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/account',
             name: 'account',
             builder: (context, state) => const AccountScreen(),
+            routes: [
+              GoRoute(
+                path: 'edit',
+                name: 'edit-profile',
+                builder: (context, state) => const EditProfileScreen(),
+              ),
+            ],
           ),
 
           GoRoute(

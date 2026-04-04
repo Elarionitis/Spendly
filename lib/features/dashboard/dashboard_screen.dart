@@ -182,7 +182,7 @@ class DashboardScreen extends ConsumerWidget {
                         icon: Icons.handshake_rounded,
                         label: 'Settle\nUp',
                         color: const Color(0xFF10B981),
-                        onTap: () => context.go('/settlements'),
+                        onTap: () => context.go('/settle'),
                       ),
                       const SizedBox(width: 12),
                       _buildActionTile(
@@ -300,6 +300,7 @@ class DashboardScreen extends ConsumerWidget {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: SpendlyCard(
+                        onTap: () => context.go('/personal/add', extra: {'expenseId': e.id}),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 14),
                         child: Row(
@@ -567,6 +568,10 @@ class DashboardScreen extends ConsumerWidget {
               leading: const Icon(Icons.person_outline),
               title: const Text('Profile'),
               subtitle: Text(ref.read(authProvider)?.email ?? ''),
+              onTap: () {
+                Navigator.pop(context);
+                context.go('/account');
+              },
             ),
             ListTile(
               leading: const Icon(Icons.logout, color: SpendlyColors.danger),

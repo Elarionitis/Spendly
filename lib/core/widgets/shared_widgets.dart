@@ -259,53 +259,74 @@ class UserAvatar extends StatelessWidget {
   final String name;
   final String userId;
   final double size;
+  final bool isVerified;
+  final String? avatarUrl;
 
   const UserAvatar({
     super.key,
     required this.name,
     required this.userId,
     this.size = 36,
+    this.isVerified = false,
+    this.avatarUrl,
   });
 
   Color _colorFromId(String id) {
-    final colors = [
-      SpendlyColors.primary,
-      const Color(0xFF8B5CF6),
-      const Color(0xFFEC4899),
-      SpendlyColors.secondary,
-      const Color(0xFFF59E0B),
-      const Color(0xFF3B82F6),
-      const Color(0xFFEF4444),
-      const Color(0xFF14B8A6),
-    ];
-    return colors[id.hashCode.abs() % colors.length];
+// ... same ...
   }
 
   String _initials(String name) {
-    final parts = name.trim().split(' ');
-    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+// ... same ...
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: _colorFromId(userId),
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          _initials(name),
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: size * 0.35,
-            fontWeight: FontWeight.w700,
+    return Stack(
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: avatarUrl == null ? _colorFromId(userId) : Colors.transparent,
+            shape: BoxShape.circle,
+            image: avatarUrl != null
+                ? DecorationImage(
+                    image: NetworkImage(avatarUrl!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
           ),
+          child: avatarUrl == null
+              ? Center(
+                  child: Text(
+                    _initials(name),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: size * 0.35,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              : null,
         ),
-      ),
+        if (isVerified)
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              padding: const EdgeInsets.all(1),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.verified,
+                color: SpendlyColors.primary,
+                size: size * 0.35,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
