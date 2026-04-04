@@ -11,11 +11,15 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # 🔥 Firebase (REQUIRED)
+  # 🔥 Firebase (FIXED)
+  firebase_core: ^4.6.0
+  firebase_auth: ^6.3.0
+  cloud_firestore: ^6.2.0
+  google_sign_in: ^6.2.1
 
-  firebase_core: 2.30.0
-  firebase_auth: 4.16.0   
-  google_sign_in: 6.2.1   
+  # Others
+  http: ^1.2.0
+  image_picker: ^1.0.7
 
   # State management
   flutter_riverpod: ^2.5.1
@@ -41,13 +45,9 @@ dependencies:
   # Animations
   flutter_animate: ^4.5.0
 
-  # Image picking
-  image_picker: ^1.1.2
-
   # Local storage
   shared_preferences: ^2.5.4
-  cloud_firestore: ^6.2.0
-
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,3 +1,5 @@
+// The buildscript block is no longer needed here as plugins are managed in settings.gradle.kts
+
 allprojects {
     repositories {
         google()
@@ -15,6 +17,7 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
 subprojects {
     project.evaluationDependsOn(":app")
 }
