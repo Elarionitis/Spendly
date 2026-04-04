@@ -1,7 +1,5 @@
 # Spendly
 
-![Spendly Banner](https://raw.githubusercontent.com/Elarionitis/Spendly/main/web/icons/Icon-512.png)
-
 [![Flutter Version](https://img.shields.io/badge/Flutter-%3E%3D3.3.0-blue.svg)](https://flutter.dev)
 [![Firebase](https://img.shields.io/badge/Firebase-Supported-orange.svg)](https://firebase.google.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
