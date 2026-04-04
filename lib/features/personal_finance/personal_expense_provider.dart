@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/personal_expense.dart';
 import '../../core/models/enums.dart';
+import '../../core/repositories/repository_providers.dart';
 import '../auth/auth_provider.dart';
 
 final personalExpenseProvider =
@@ -11,140 +13,48 @@ final personalExpenseProvider =
 
 class PersonalExpenseNotifier extends StateNotifier<List<PersonalExpense>> {
   final Ref _ref;
+  StreamSubscription? _subscription;
 
   PersonalExpenseNotifier(this._ref) : super([]) {
-    _seedData();
+    _listenToExpenses();
   }
 
-  void _seedData() {
-    final userId = _ref.read(authProvider)?.id ?? 'u1';
-    final now = DateTime.now();
+  void _listenToExpenses() {
+    final user = _ref.watch(authProvider);
+    if (user == null) {
+      state = [];
+      return;
+    }
 
-    state = [
-      PersonalExpense(
-        id: 'pe1',
-        userId: userId,
-        amount: 350,
-        category: ExpenseCategory.food,
-        description: 'Lunch at Cafe',
-        paymentMethod: PaymentMethod.upi,
-        date: now.subtract(const Duration(days: 1)),
-      ),
-      PersonalExpense(
-        id: 'pe2',
-        userId: userId,
-        amount: 1200,
-        category: ExpenseCategory.shopping,
-        description: 'New Shoes',
-        paymentMethod: PaymentMethod.card,
-        date: now.subtract(const Duration(days: 2)),
-      ),
-      PersonalExpense(
-        id: 'pe3',
-        userId: userId,
-        amount: 500,
-        category: ExpenseCategory.transport,
-        description: 'Cab to Airport',
-        paymentMethod: PaymentMethod.upi,
-        date: now.subtract(const Duration(days: 3)),
-      ),
-      PersonalExpense(
-        id: 'pe4',
-        userId: userId,
-        amount: 2500,
-        category: ExpenseCategory.entertainment,
-        description: 'Movie + Dinner',
-        paymentMethod: PaymentMethod.card,
-        date: now.subtract(const Duration(days: 5)),
-      ),
-      PersonalExpense(
-        id: 'pe5',
-        userId: userId,
-        amount: 800,
-        category: ExpenseCategory.health,
-        description: 'Pharmacy',
-        paymentMethod: PaymentMethod.cash,
-        date: now.subtract(const Duration(days: 7)),
-      ),
-      PersonalExpense(
-        id: 'pe6',
-        userId: userId,
-        amount: 4500,
-        category: ExpenseCategory.utilities,
-        description: 'Internet Bill',
-        paymentMethod: PaymentMethod.netBanking,
-        date: now.subtract(const Duration(days: 10)),
-      ),
-      PersonalExpense(
-        id: 'pe7',
-        userId: userId,
-        amount: 650,
-        category: ExpenseCategory.food,
-        description: 'Grocery Shopping',
-        paymentMethod: PaymentMethod.upi,
-        date: now.subtract(const Duration(days: 12)),
-      ),
-      PersonalExpense(
-        id: 'pe8',
-        userId: userId,
-        amount: 3200,
-        category: ExpenseCategory.shopping,
-        description: 'Amazon Order',
-        paymentMethod: PaymentMethod.card,
-        date: now.subtract(const Duration(days: 15)),
-      ),
-      PersonalExpense(
-        id: 'pe9',
-        userId: userId,
-        amount: 250,
-        category: ExpenseCategory.transport,
-        description: 'Metro Recharge',
-        paymentMethod: PaymentMethod.wallet,
-        date: now.subtract(const Duration(days: 18)),
-      ),
-      PersonalExpense(
-        id: 'pe10',
-        userId: userId,
-        amount: 1800,
-        category: ExpenseCategory.education,
-        description: 'Online Course',
-        paymentMethod: PaymentMethod.card,
-        date: now.subtract(const Duration(days: 20)),
-      ),
-      PersonalExpense(
-        id: 'pe11',
-        userId: userId,
-        amount: 420,
-        category: ExpenseCategory.food,
-        description: 'Coffee Shop',
-        paymentMethod: PaymentMethod.upi,
-        date: now.subtract(const Duration(days: 22)),
-      ),
-      PersonalExpense(
-        id: 'pe12',
-        userId: userId,
-        amount: 900,
-        category: ExpenseCategory.entertainment,
-        description: 'Spotify + Netflix',
-        paymentMethod: PaymentMethod.card,
-        date: now.subtract(const Duration(days: 25)),
-      ),
-    ];
+    _subscription?.cancel();
+    _subscription = _ref
+        .watch(personalExpenseRepositoryProvider)
+        .watchPersonalExpenses(user.id)
+        .listen((expenses) => state = expenses);
   }
 
-  void addExpense(PersonalExpense expense) {
-    state = [expense, ...state];
+  Future<void> addExpense(PersonalExpense expense) async {
+    final user = _ref.read(authProvider);
+    if (user == null) return;
+    await _ref.read(personalExpenseRepositoryProvider).addPersonalExpense(user.id, expense);
   }
 
-  void updateExpense(PersonalExpense updated) {
-    state = [
-      for (final e in state)
-        if (e.id == updated.id) updated else e,
-    ];
+  Future<void> updateExpense(PersonalExpense updated) async {
+    final user = _ref.read(authProvider);
+    if (user == null) return;
+    await _ref.read(personalExpenseRepositoryProvider).updatePersonalExpense(user.id, updated);
   }
 
-  void deleteExpense(String id) {
-    state = state.where((e) => e.id != id).toList();
+  Future<void> deleteExpense(String id) async {
+    final user = _ref.read(authProvider);
+    if (user == null) return;
+    await _ref.read(personalExpenseRepositoryProvider).deletePersonalExpense(user.id, id);
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    super.dispose();
   }
 }
 
