@@ -1,154 +1,58 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
 import '../../core/models/app_user.dart';
-import '../../core/services/auth_service.dart';
+import '../../core/repositories/repository_providers.dart';
+import '../../core/repositories/auth_repository.dart';
 
-/// ----------------------
-/// In-memory user data (demo)
-/// ----------------------
-final usersDataProvider = StateProvider<List<AppUser>>((ref) {
-  return [
-    const AppUser(id: 'u1', name: 'Alice Kumar', email: 'alice@spendly.app'),
-    const AppUser(id: 'u2', name: 'Bob Sharma', email: 'bob@spendly.app'),
-    const AppUser(id: 'u3', name: 'Carol Singh', email: 'carol@spendly.app'),
-    const AppUser(id: 'u4', name: 'Dave Patel', email: 'dave@spendly.app'),
-  ];
-});
+// ─── Current user (stream-backed) ─────────────────────────────────────────────
 
-/// ----------------------
-/// Auth Service Provider
-/// ----------------------
-final authServiceProvider = Provider<AuthService>((ref) {
-  return AuthService();
-});
-
-/// ----------------------
-/// Auth Notifier
-/// ----------------------
+/// Watches auth state changes; null = not logged in.
 final authProvider = StateNotifierProvider<AuthNotifier, AppUser?>((ref) {
-  return AuthNotifier(ref);
+  return AuthNotifier(ref.watch(authRepositoryProvider), ref);
 });
 
 class AuthNotifier extends StateNotifier<AppUser?> {
+  final AuthRepository _repo;
   final Ref _ref;
 
-  AuthNotifier(this._ref) : super(null) {
-    _listenToFirebaseAuth();
+  AuthNotifier(this._repo, this._ref) : super(_repo.currentUser) {
+    // Listen to auth state stream so state stays reactive
+    _repo.authStateStream.listen((user) => state = user);
   }
 
-  /// 🔥 Listen to Firebase auth state
-  void _listenToFirebaseAuth() {
-    final authService = _ref.read(authServiceProvider);
+  Future<void> login(String email, String password) =>
+      _repo.login(email, password);
 
-    authService.authStateChanges.listen((firebaseUser) {
-      if (firebaseUser != null) {
-        state = _mapFirebaseUser(firebaseUser);
-      } else {
-        state = null;
-      }
-    });
-  }
+  Future<void> register(String name, String email, String password) =>
+      _repo.register(name, email, password);
 
-  /// 🔁 Convert Firebase user → AppUser
-  AppUser _mapFirebaseUser(User user) {
-    return AppUser(
-      id: user.uid,
-      name: user.displayName ?? "User",
-      email: user.email ?? "",
-    );
-  }
+  Future<void> signInWithGoogle() => _repo.signInWithGoogle();
 
-  /// ----------------------
-  /// Google Sign-In
-  /// ----------------------
- Future<void> signInWithGoogle() async {
-  try {
-    final authService = _ref.read(authServiceProvider);
-
-    final userCredential = await authService.signInWithGoogle();
-
-    if (userCredential == null || userCredential.user == null) {
-      throw Exception("Google Sign-In failed");
-    }
-
-    final firebaseUser = userCredential.user!;
-
-    // ⭐ UPDATE STATE HERE
-    state = AppUser(
-      id: firebaseUser.uid,
-      name: firebaseUser.displayName ?? "User",
-      email: firebaseUser.email ?? "",
-    );
-  } catch (e) {
-    throw Exception("Google Sign-In failed");
-  }
-}
-
-  /// ----------------------
-  /// Logout
-  /// ----------------------
   Future<void> logout() async {
-    final authService = _ref.read(authServiceProvider);
-    await authService.signOut();
-    state = null;
-  }
-
-  /// ----------------------
-  /// Legacy (Optional - Keep for demo/testing)
-  /// ----------------------
-  void login(String email, String password) {
-    final users = _ref.read(usersDataProvider);
-
-    final user = users.cast<AppUser?>().firstWhere(
-          (u) => u?.email.toLowerCase() == email.toLowerCase(),
-          orElse: () => null,
-        );
-
-    if (user == null) {
-      throw Exception('No account found with that email.');
-    }
-
-    state = user;
-  }
-
-  void register(String name, String email, String password) {
-    final users = _ref.read(usersDataProvider);
-
-    if (users.any((u) => u.email.toLowerCase() == email.toLowerCase())) {
-      throw Exception('Email already in use.');
-    }
-
-    final newUser = AppUser(
-      id: 'u${DateTime.now().millisecondsSinceEpoch}',
-      name: name.trim(),
-      email: email.trim(),
-    );
-
-    _ref.read(usersDataProvider.notifier).state = [...users, newUser];
-    state = newUser;
+    await _repo.logout();
+    _ref.invalidate(authProvider); // will reset notifier
+    _ref.invalidate(allUsersProvider);
   }
 
   bool get isAuthenticated => state != null;
-
-  AppUser? getUserById(String id) {
-    final users = _ref.read(usersDataProvider);
-
-    return users.cast<AppUser?>().firstWhere(
-          (u) => u?.id == id,
-          orElse: () => null,
-        );
-  }
 }
 
-/// ----------------------
-/// Get user by ID
-/// ----------------------
-final userByIdProvider = Provider.family<AppUser?, String>((ref, id) {
-  final users = ref.watch(usersDataProvider);
+// ─── User lookup providers ─────────────────────────────────────────────────────
 
-  return users.cast<AppUser?>().firstWhere(
-        (u) => u?.id == id,
-        orElse: () => null,
-      );
+/// Provides the list of all users (used in group settings, split screens, etc.)
+final allUsersProvider = FutureProvider<List<AppUser>>((ref) async {
+  return ref.watch(userRepositoryProvider).getUsers();
+});
+
+/// Convenience: look up a single user by ID.
+/// Synchronous user lookup by ID.
+/// Reads from the in-memory allUsersProvider cache (works in demo mode).
+/// Returns null if the user hasn't been loaded yet.
+final userByIdProvider = Provider.family<AppUser?, String>((ref, id) {
+  final usersAsync = ref.watch(allUsersProvider);
+  final users = usersAsync.value ?? [];
+  try {
+    return users.firstWhere((u) => u.id == id);
+  } catch (_) {
+    return null;
+  }
 });
