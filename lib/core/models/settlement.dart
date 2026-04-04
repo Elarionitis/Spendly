@@ -28,6 +28,41 @@ class Settlement {
     this.rejectionReason,
   });
 
+  factory Settlement.fromJson(Map<String, dynamic> json, {String? id}) {
+    return Settlement(
+      id: id ?? json['id'] as String,
+      fromUserId: json['fromUserId'] as String? ?? '',
+      toUserId: json['toUserId'] as String? ?? '',
+      amount: (json['amount'] as num?)?.toDouble() ?? 0,
+      status: SettlementStatus.values.firstWhere(
+        (e) => e.name == (json['status'] as String?),
+        orElse: () => SettlementStatus.pendingVerification,
+      ),
+      createdAt: json['createdAt'] is int
+          ? DateTime.fromMillisecondsSinceEpoch(json['createdAt'] as int)
+          : (json['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
+      transactionId: json['transactionId'] as String?,
+      proofUrl: json['proofUrl'] as String?,
+      groupId: json['groupId'] as String?,
+      rejectionReason: json['rejectionReason'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'fromUserId': fromUserId,
+      'toUserId': toUserId,
+      'amount': amount,
+      'status': status.name,
+      'createdAt': createdAt.millisecondsSinceEpoch,
+      if (transactionId != null) 'transactionId': transactionId,
+      if (proofUrl != null) 'proofUrl': proofUrl,
+      if (groupId != null) 'groupId': groupId,
+      if (rejectionReason != null) 'rejectionReason': rejectionReason,
+    };
+  }
+
   Settlement copyWith({
     String? id,
     String? fromUserId,

@@ -58,4 +58,37 @@ class PersonalExpense {
 
   @override
   int get hashCode => id.hashCode;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'userId': userId,
+      'amount': amount,
+      'category': category.name,
+      'description': description,
+      'paymentMethod': paymentMethod.name,
+      'date': date.toIso8601String(),
+      'notes': notes,
+      'receiptImagePath': receiptImagePath,
+    };
+  }
+
+  factory PersonalExpense.fromJson(Map<String, dynamic> json, {String? id}) {
+    return PersonalExpense(
+      id: id ?? '',
+      userId: json['userId'] ?? '',
+      amount: (json['amount'] as num).toDouble(),
+      category: ExpenseCategory.values.firstWhere(
+        (e) => e.name == json['category'],
+        orElse: () => ExpenseCategory.miscellaneous,
+      ),
+      description: json['description'] ?? '',
+      paymentMethod: PaymentMethod.values.firstWhere(
+        (e) => e.name == json['paymentMethod'],
+        orElse: () => PaymentMethod.cash,
+      ),
+      date: DateTime.parse(json['date']),
+      notes: json['notes'],
+      receiptImagePath: json['receiptImagePath'],
+    );
+  }
 }

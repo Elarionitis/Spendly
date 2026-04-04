@@ -23,6 +23,39 @@ class Group {
     this.defaultSplitType = SplitType.equal,
   });
 
+  factory Group.fromJson(Map<String, dynamic> json, {String? id}) {
+    return Group(
+      id: id ?? json['id'] as String,
+      name: json['name'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      createdById: json['createdById'] as String? ?? '',
+      memberIds: List<String>.from(json['memberIds'] as List? ?? []),
+      createdAt: json['createdAt'] is int
+          ? DateTime.fromMillisecondsSinceEpoch(json['createdAt'] as int)
+          : (json['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
+      emoji: json['emoji'] as String?,
+      smartSplitEnabled: json['smartSplitEnabled'] as bool? ?? false,
+      defaultSplitType: SplitType.values.firstWhere(
+        (e) => e.name == (json['defaultSplitType'] as String?),
+        orElse: () => SplitType.equal,
+      ),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'createdById': createdById,
+      'memberIds': memberIds,
+      'createdAt': createdAt.millisecondsSinceEpoch,
+      if (emoji != null) 'emoji': emoji,
+      'smartSplitEnabled': smartSplitEnabled,
+      'defaultSplitType': defaultSplitType.name,
+    };
+  }
+
   Group copyWith({
     String? id,
     String? name,

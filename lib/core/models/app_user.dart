@@ -5,12 +5,16 @@ class AppUser {
   final String name;
   final String email;
   final String? avatarUrl;
+  final String? bio;
+  final bool isVerified;
 
   const AppUser({
     required this.id,
     required this.name,
     required this.email,
     this.avatarUrl,
+    this.bio,
+    this.isVerified = false,
   });
 
   /// Generates a consistent color for this user's avatar
@@ -37,17 +41,43 @@ class AppUser {
     return name.isNotEmpty ? name[0].toUpperCase() : '?';
   }
 
+  factory AppUser.fromJson(Map<String, dynamic> json, {String? id}) {
+    return AppUser(
+      id: id ?? json['id'] as String,
+      name: json['name'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      avatarUrl: json['avatarUrl'] as String?,
+      bio: json['bio'] as String?,
+      isVerified: json['isVerified'] as bool? ?? false,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+      if (avatarUrl != null) 'avatarUrl': avatarUrl,
+      if (bio != null) 'bio': bio,
+      'isVerified': isVerified,
+    };
+  }
+
   AppUser copyWith({
     String? id,
     String? name,
     String? email,
     String? avatarUrl,
+    String? bio,
+    bool? isVerified,
   }) {
     return AppUser(
       id: id ?? this.id,
       name: name ?? this.name,
       email: email ?? this.email,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      bio: bio ?? this.bio,
+      isVerified: isVerified ?? this.isVerified,
     );
   }
 

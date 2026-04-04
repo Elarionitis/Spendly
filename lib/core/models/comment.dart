@@ -21,6 +21,30 @@ class Comment {
     required this.timestamp,
   });
 
+  factory Comment.fromJson(Map<String, dynamic> json, {String? id}) {
+    return Comment(
+      id: id ?? json['id'] as String,
+      userId: json['userId'] as String? ?? '',
+      targetId: json['targetId'] as String? ?? '',
+      targetType: json['targetType'] as String? ?? 'expense',
+      message: json['message'] as String? ?? '',
+      timestamp: json['timestamp'] is int
+          ? DateTime.fromMillisecondsSinceEpoch(json['timestamp'] as int)
+          : (json['timestamp'] as dynamic)?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'userId': userId,
+      'targetId': targetId,
+      'targetType': targetType,
+      'message': message,
+      'timestamp': timestamp.millisecondsSinceEpoch,
+    };
+  }
+
   Comment copyWith({
     String? id,
     String? userId,
