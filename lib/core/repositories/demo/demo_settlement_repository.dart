@@ -39,20 +39,20 @@ class DemoSettlementRepository implements SettlementRepository {
   void _emit() => _controller.add(List.unmodifiable(_settlements));
 
   @override
-  Stream<List<Settlement>> watchSettlements(String userId) {
+  Stream<List<Settlement>> watchSettlements(String groupId) {
     final filtered =
-        _settlements.where((s) => s.fromUserId == userId || s.toUserId == userId).toList();
+        _settlements.where((s) => s.groupId == groupId).toList();
     return Stream.value(filtered).mergeWith([
       _controller.stream.map((all) => all
-          .where((s) => s.fromUserId == userId || s.toUserId == userId)
+          .where((s) => s.groupId == groupId)
           .toList()),
     ]);
   }
 
   @override
-  Future<List<Settlement>> getSettlements(String userId) async =>
+  Future<List<Settlement>> getSettlements(String groupId) async =>
       _settlements
-          .where((s) => s.fromUserId == userId || s.toUserId == userId)
+          .where((s) => s.groupId == groupId)
           .toList();
 
   @override
@@ -63,11 +63,12 @@ class DemoSettlementRepository implements SettlementRepository {
 
   @override
   Future<void> updateStatus(
+    String groupId,
     String id,
     SettlementStatus status, {
     String? rejectionReason,
   }) async {
-    final idx = _settlements.indexWhere((s) => s.id == id);
+    final idx = _settlements.indexWhere((s) => s.id == id && s.groupId == groupId);
     if (idx >= 0) {
       _settlements[idx] = _settlements[idx].copyWith(
         status: status,
@@ -78,8 +79,8 @@ class DemoSettlementRepository implements SettlementRepository {
   }
 
   @override
-  Future<void> updateTransactionId(String id, String transactionId) async {
-    final idx = _settlements.indexWhere((s) => s.id == id);
+  Future<void> updateTransactionId(String groupId, String id, String transactionId) async {
+    final idx = _settlements.indexWhere((s) => s.id == id && s.groupId == groupId);
     if (idx >= 0) {
       _settlements[idx] = _settlements[idx].copyWith(transactionId: transactionId);
       _emit();

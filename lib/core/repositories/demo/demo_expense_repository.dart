@@ -108,7 +108,7 @@ class DemoExpenseRepository implements ExpenseRepository {
   }
 
   @override
-  Future<void> deleteExpense(String id) async {
+  Future<void> deleteExpense(String groupId, String id) async {
     _expenses.removeWhere((e) => e.id == id);
     _emit();
   }

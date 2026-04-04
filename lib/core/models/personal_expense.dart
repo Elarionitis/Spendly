@@ -79,7 +79,7 @@ class PersonalExpense {
       amount: (json['amount'] as num).toDouble(),
       category: ExpenseCategory.values.firstWhere(
         (e) => e.name == json['category'],
-        orElse: () => ExpenseCategory.miscellaneous,
+        orElse: () => ExpenseCategory.other,
       ),
       description: json['description'] ?? '',
       paymentMethod: PaymentMethod.values.firstWhere(
