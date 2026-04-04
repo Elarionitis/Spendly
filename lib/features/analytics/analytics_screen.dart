@@ -22,6 +22,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    
+    // Subscribe to all groups to ensure analytics are accurate
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final groups = ref.read(groupProvider);
+      final groupIds = groups.map((g) => g.id).toList();
+      ref.read(groupExpenseProvider.notifier).subscribeToAll(groupIds);
+    });
   }
 
   @override
