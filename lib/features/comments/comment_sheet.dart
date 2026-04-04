@@ -71,8 +71,10 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
   Widget build(BuildContext context) {
     final comments = ref.watch(commentsForTargetProvider(widget.targetId));
     final user = ref.watch(authProvider);
-    final users = ref.watch(usersDataProvider);
+    final usersAsync = ref.watch(allUsersProvider);
+    final users = usersAsync.value ?? [];
     final cs = Theme.of(context).colorScheme;
+
 
     return DraggableScrollableSheet(
       initialChildSize: 0.6,

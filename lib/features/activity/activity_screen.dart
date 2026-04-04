@@ -23,7 +23,8 @@ class ActivityScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final events = ref.watch(activityProvider);
-    final users = ref.watch(usersDataProvider);
+    final usersAsync = ref.watch(allUsersProvider);
+    final users = usersAsync.value ?? [];
 
     return Scaffold(
       appBar: AppBar(

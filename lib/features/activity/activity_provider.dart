@@ -1,15 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/activity_event.dart';
+import '../../core/models/app_user.dart';
 import '../groups/group_provider.dart';
 import '../settlements/settlement_provider.dart';
 import '../auth/auth_provider.dart';
 
-/// Derived activity feed: every group expense + settlement + comment, sorted
-/// by timestamp descending.
+/// Derived activity feed: every group expense + settlement, sorted by timestamp descending.
 final activityProvider = Provider<List<ActivityEvent>>((ref) {
   final user = ref.watch(authProvider);
   final currentUserId = user?.id ?? 'u1';
-  final users = ref.watch(usersDataProvider);
+  final usersAsync = ref.watch(allUsersProvider);
+  final users = usersAsync.value ?? <AppUser>[];
 
   String userName(String uid) {
     final u = users.cast<dynamic>().firstWhere(

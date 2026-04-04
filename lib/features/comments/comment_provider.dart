@@ -1,58 +1,35 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/models/comment.dart';
+import '../../core/repositories/repository_providers.dart';
+import '../../core/repositories/comment_repository.dart';
 
 const _uuid = Uuid();
 
+// ─── Comment Notifier ─────────────────────────────────────────────────────────
+
 final commentProvider =
     StateNotifierProvider<CommentNotifier, List<Comment>>((ref) {
-  return CommentNotifier();
+  return CommentNotifier(ref.watch(commentRepositoryProvider));
 });
 
 class CommentNotifier extends StateNotifier<List<Comment>> {
-  CommentNotifier() : super([]) {
-    _seedData();
+  final CommentRepository _repo;
+  final Map<String, void Function()> _listeners = {};
+
+  CommentNotifier(this._repo) : super([]);
+
+  /// Subscribe to real-time comments for a target (expense/settlement).
+  void subscribeToTarget(String targetId) {
+    if (_listeners.containsKey(targetId)) return;
+    final sub = _repo.watchComments(targetId).listen((comments) {
+      final others = state.where((c) => c.targetId != targetId).toList();
+      state = [...others, ...comments];
+    });
+    _listeners[targetId] = sub.cancel;
   }
 
-  void _seedData() {
-    final now = DateTime.now();
-    state = [
-      Comment(
-        id: 'c1',
-        userId: 'u2',
-        targetId: 'ge1',
-        targetType: 'expense',
-        message: 'Great find on the hotel! Well within budget 🙌',
-        timestamp: now.subtract(const Duration(days: 27, hours: 2)),
-      ),
-      Comment(
-        id: 'c2',
-        userId: 'u1',
-        targetId: 'ge1',
-        targetType: 'expense',
-        message: 'Thanks! Booked early so got a good deal.',
-        timestamp: now.subtract(const Duration(days: 27, hours: 1)),
-      ),
-      Comment(
-        id: 'c3',
-        userId: 'u3',
-        targetId: 'ge3',
-        targetType: 'expense',
-        message: 'The food was amazing 🍤',
-        timestamp: now.subtract(const Duration(days: 24, hours: 5)),
-      ),
-      Comment(
-        id: 'c4',
-        userId: 'u2',
-        targetId: 's1',
-        targetType: 'settlement',
-        message: 'Sent via GPay — ref in txn ID',
-        timestamp: now.subtract(const Duration(days: 2)),
-      ),
-    ];
-  }
-
-  void addComment({
+  Future<void> addComment({
     required String targetId,
     required String targetType,
     required String userId,
@@ -66,11 +43,17 @@ class CommentNotifier extends StateNotifier<List<Comment>> {
       message: message,
       timestamp: DateTime.now(),
     );
-    state = [comment, ...state];
+    return _repo.addComment(comment);
   }
 
-  void deleteComment(String id) {
-    state = state.where((c) => c.id != id).toList();
+  Future<void> deleteComment(String id) => _repo.deleteComment(id);
+
+  @override
+  void dispose() {
+    for (final cancel in _listeners.values) {
+      cancel();
+    }
+    super.dispose();
   }
 }
 
@@ -78,9 +61,9 @@ class CommentNotifier extends StateNotifier<List<Comment>> {
 
 final commentsForTargetProvider =
     Provider.family<List<Comment>, String>((ref, targetId) {
+  ref.read(commentProvider.notifier).subscribeToTarget(targetId);
+
   final all = ref.watch(commentProvider);
-  final filtered = all.where((c) => c.targetId == targetId).toList();
-  // Oldest first in thread
-  filtered.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-  return filtered;
+  return all.where((c) => c.targetId == targetId).toList()
+    ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 });
