@@ -1,259 +1,172 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-// ─── SpendlyCard ─────────────────────────────────────────────────────────────
+// ─── App Constants ────────────────────────────────────────────────────────────
+
+class AppConstants {
+  static const double horizontalPadding = 20.0;
+  static const double borderRadius = 12.0;
+}
+
+// ─── Spendly Button ───────────────────────────────────────────────────────────
+
+class SpendlyButton extends StatelessWidget {
+  final String text;
+  final VoidCallback? onPressed;
+  final bool isLoading;
+  final bool isFullWidth;
+  final Color? color;
+
+  const SpendlyButton({
+    super.key,
+    required this.text,
+    this.onPressed,
+    this.isLoading = false,
+    this.isFullWidth = true,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final button = ElevatedButton(
+      onPressed: isLoading ? null : onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color ?? SpendlyColors.primary,
+        minimumSize: Size(isFullWidth ? double.infinity : 0, 52),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+      ),
+      child: isLoading
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+            )
+          : Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+    );
+
+    return isFullWidth ? button : IntrinsicWidth(child: button);
+  }
+}
+
+// ─── Spendly Text Field ───────────────────────────────────────────────────────
+
+class SpendlyTextField extends StatelessWidget {
+  final String label;
+  final String? hint;
+  final TextEditingController? controller;
+  final bool obscureText;
+  final TextInputType? keyboardType;
+  final Widget? prefixIcon;
+  final Widget? suffixIcon;
+  final FormFieldValidator<String>? validator;
+  final int maxLines;
+
+  const SpendlyTextField({
+    super.key,
+    required this.label,
+    this.hint,
+    this.controller,
+    this.obscureText = false,
+    this.keyboardType,
+    this.prefixIcon,
+    this.suffixIcon,
+    this.validator,
+    this.maxLines = 1,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: SpendlyColors.neutral600,
+              ),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          validator: validator,
+          maxLines: maxLines,
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: prefixIcon,
+            suffixIcon: suffixIcon,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Spendly Card ─────────────────────────────────────────────────────────────
 
 class SpendlyCard extends StatelessWidget {
   final Widget child;
-  final EdgeInsets? padding;
+  final EdgeInsetsGeometry? padding;
+  final Color? backgroundColor;
+  final double? borderRadius;
   final VoidCallback? onTap;
   final Gradient? gradient;
-  final Color? backgroundColor;
-  final double borderRadius;
 
   const SpendlyCard({
     super.key,
     required this.child,
     this.padding,
+    this.backgroundColor,
+    this.borderRadius,
     this.onTap,
     this.gradient,
-    this.backgroundColor,
-    this.borderRadius = 16,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final decoration = BoxDecoration(
+      color: gradient != null ? null : (backgroundColor ?? Theme.of(context).cardColor),
+      gradient: gradient,
+      borderRadius: BorderRadius.circular(borderRadius ?? 16),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.04),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    );
 
-    Widget content = Padding(
-      padding: padding ?? const EdgeInsets.all(20),
+    final card = Container(
+      padding: padding ?? const EdgeInsets.all(16),
+      decoration: decoration,
       child: child,
     );
 
     if (onTap != null) {
-      content = InkWell(
+      return InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: content,
+        borderRadius: BorderRadius.circular(borderRadius ?? 16),
+        child: card,
       );
     }
-
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(borderRadius),
-        gradient: gradient,
-        color: gradient == null
-            ? (backgroundColor ??
-                (isDark ? SpendlyColors.darkCard : Colors.white))
-            : null,
-        boxShadow: gradient != null
-            ? [
-                BoxShadow(
-                  color: (gradient!.colors.first).withAlpha(60),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ]
-            : [
-                BoxShadow(
-                  color: Colors.black.withAlpha(isDark ? 30 : 8),
-                  blurRadius: 12,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
-        child: content,
-      ),
-    );
+    return card;
   }
 }
 
-// ─── GradientButton ───────────────────────────────────────────────────────────
-
-class GradientButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onPressed;
-  final Gradient gradient;
-  final IconData? icon;
-  final double height;
-
-  const GradientButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-    this.gradient = SpendlyColors.primaryGradient,
-    this.icon,
-    this.height = 52,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        gradient: onPressed != null ? gradient : null,
-        color: onPressed == null ? SpendlyColors.neutral300 : null,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: onPressed != null
-            ? [
-                BoxShadow(
-                  color: gradient.colors.first.withAlpha(80),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(14),
-          child: Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, color: Colors.white, size: 18),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── EmptyState ───────────────────────────────────────────────────────────────
-
-class EmptyState extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  const EmptyState({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: SpendlyColors.primary.withAlpha(15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 48, color: SpendlyColors.primary),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: SpendlyColors.neutral500,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            if (actionLabel != null && onAction != null) ...[
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: onAction,
-                child: Text(actionLabel!),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── StatusBadge ─────────────────────────────────────────────────────────────
-
-class StatusBadge extends StatelessWidget {
-  final String label;
-  final Color color;
-  final Color backgroundColor;
-
-  const StatusBadge({
-    super.key,
-    required this.label,
-    required this.color,
-    required this.backgroundColor,
-  });
-
-  factory StatusBadge.pending() => const StatusBadge(
-        label: 'Pending',
-        color: Color(0xFFF59E0B),
-        backgroundColor: Color(0xFFFEF3C7),
-      );
-
-  factory StatusBadge.verified() => const StatusBadge(
-        label: 'Verified',
-        color: Color(0xFF10B981),
-        backgroundColor: Color(0xFFD1FAE5),
-      );
-
-  factory StatusBadge.rejected() => const StatusBadge(
-        label: 'Rejected',
-        color: Color(0xFFEF4444),
-        backgroundColor: Color(0xFFFEE2E2),
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.3,
-        ),
-      ),
-    );
-  }
-}
-
-// ─── UserAvatar ───────────────────────────────────────────────────────────────
+// ─── User Avatar ──────────────────────────────────────────────────────────────
 
 class UserAvatar extends StatelessWidget {
   final String name;
@@ -272,16 +185,34 @@ class UserAvatar extends StatelessWidget {
   });
 
   Color _colorFromId(String id) {
-// ... same ...
+    final List<Color> colors = [
+      const Color(0xFF6366F1), // Indigo
+      const Color(0xFFEC4899), // Pink
+      const Color(0xFFF59E0B), // Amber
+      const Color(0xFF10B981), // Emerald
+      const Color(0xFF8B5CF6), // Violet
+      const Color(0xFFEF4444), // Red
+    ];
+    int hash = 0;
+    for (int i = 0; i < id.length; i++) {
+      hash = id.codeUnitAt(i) + ((hash << 5) - hash);
+    }
+    return colors[hash.abs() % colors.length];
   }
 
   String _initials(String name) {
-// ... same ...
+    if (name.isEmpty) return '?';
+    final parts = name.trim().split(' ');
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
   }
 
   @override
   Widget build(BuildContext context) {
     return Stack(
+      alignment: Alignment.center,
       children: [
         Container(
           width: size,
@@ -302,8 +233,8 @@ class UserAvatar extends StatelessWidget {
                     _initials(name),
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: size * 0.35,
-                      fontWeight: FontWeight.w700,
+                      fontSize: size * 0.4,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 )
@@ -311,8 +242,8 @@ class UserAvatar extends StatelessWidget {
         ),
         if (isVerified)
           Positioned(
-            right: 0,
             bottom: 0,
+            right: 0,
             child: Container(
               padding: const EdgeInsets.all(1),
               decoration: const BoxDecoration(
@@ -320,7 +251,7 @@ class UserAvatar extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                Icons.verified,
+                Icons.check_circle,
                 color: SpendlyColors.primary,
                 size: size * 0.35,
               ),
@@ -331,7 +262,126 @@ class UserAvatar extends StatelessWidget {
   }
 }
 
-// ─── SectionHeader ────────────────────────────────────────────────────────────
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+
+class StatusBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+  final Color backgroundColor;
+
+  const StatusBadge({
+    super.key,
+    required this.label,
+    required this.color,
+    required this.backgroundColor,
+  });
+
+  static StatusBadge pending({String label = 'Pending'}) => StatusBadge(
+        label: label,
+        color: SpendlyColors.warning,
+        backgroundColor: const Color(0xFFFEF3C7),
+      );
+
+  static StatusBadge verified({String label = 'Verified'}) => StatusBadge(
+        label: label,
+        color: SpendlyColors.success,
+        backgroundColor: const Color(0xFFD1FAE5),
+      );
+
+  static StatusBadge rejected({String label = 'Rejected'}) => StatusBadge(
+        label: label,
+        color: SpendlyColors.danger,
+        backgroundColor: const Color(0xFFFEE2E2),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Stat Card ───────────────────────────────────────────────────────────────
+
+class StatCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final String? subtitle;
+  final IconData icon;
+  final Color color;
+  final Gradient? gradient;
+
+  const StatCard({
+    super.key,
+    required this.title,
+    required this.value,
+    this.subtitle,
+    required this.icon,
+    required this.color,
+    this.gradient,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SpendlyCard(
+      padding: const EdgeInsets.all(16),
+      gradient: gradient,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: gradient != null ? Colors.white24 : color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: gradient != null ? Colors.white : color, size: 20),
+          ),
+          const Spacer(),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: gradient != null ? Colors.white70 : SpendlyColors.neutral500,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: gradient != null ? Colors.white : color,
+                ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle!,
+              style: TextStyle(
+                fontSize: 10,
+                color: gradient != null ? Colors.white60 : SpendlyColors.neutral400,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Section Header ───────────────────────────────────────────────────────────
 
 class SectionHeader extends StatelessWidget {
   final String title;
@@ -347,101 +397,104 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-        const Spacer(),
-        if (actionLabel != null)
-          TextButton(
-            onPressed: onAction,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: Size.zero,
-            ),
-            child: Text(
-              actionLabel!,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
           ),
-      ],
-    );
-  }
-}
-
-// ─── SpendlyFilterChipRow ─────────────────────────────────────────────────────
-/// A horizontally-scrolling row of [ChoiceChip]s with clear selected/unselected
-/// states following the Spendly design system:
-///   • Selected  → solid primary background, white text
-///   • Unselected → neutral200 background, neutral700 text
-///
-/// Generic [T] can be any value type (int month, enum, String, etc.).
-class SpendlyFilterChipRow<T> extends StatelessWidget {
-  final List<T> items;
-  final T? selected;
-  final String Function(T) label;
-  final void Function(T?) onSelect;
-  final double height;
-  final EdgeInsets itemPadding;
-
-  const SpendlyFilterChipRow({
-    super.key,
-    required this.items,
-    required this.selected,
-    required this.label,
-    required this.onSelect,
-    this.height = 36,
-    this.itemPadding = const EdgeInsets.symmetric(horizontal: 4),
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: height,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 6),
-        itemBuilder: (context, i) {
-          final item = items[i];
-          final isSelected = selected == item;
-          return ChoiceChip(
-            label: Text(
-              label(item),
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? Colors.white : SpendlyColors.neutral700,
+          const Spacer(),
+          if (actionLabel != null)
+            TextButton(
+              onPressed: onAction,
+              child: Text(
+                actionLabel!,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: SpendlyColors.primary,
+                ),
               ),
             ),
-            selected: isSelected,
-            selectedColor: SpendlyColors.primary,
-            backgroundColor: SpendlyColors.neutral200,
-            showCheckmark: false,
-            side: BorderSide.none,
-            padding: itemPadding,
-            onSelected: (_) => onSelect(isSelected ? null : item),
-          );
-        },
+        ],
       ),
     );
   }
 }
 
-// ─── SpendlyCategoryChipGrid ──────────────────────────────────────────────────
-/// A wrapping grid of category/option chips (for Add Expense screen).
-/// Selected chip: solid primary bg + white text.
-/// Unselected chip: surfaceContainerHighest bg + neutral700 text.
+// ─── Empty State ──────────────────────────────────────────────────────────────
+
+class EmptyState extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const EmptyState({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: SpendlyColors.neutral100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 48, color: SpendlyColors.neutral400),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: SpendlyColors.neutral500,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            if (actionLabel != null) ...[
+              const SizedBox(height: 24),
+              SpendlyButton(
+                text: actionLabel!,
+                onPressed: onAction,
+                isFullWidth: false,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Spendly Category Chip Grid ───────────────────────────────────────────────
+
 class SpendlyCategoryChipGrid<T> extends StatelessWidget {
   final List<T> items;
-  final T? selected;
+  final T selected;
   final String Function(T) label;
   final void Function(T) onSelect;
 
@@ -455,39 +508,113 @@ class SpendlyCategoryChipGrid<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: items.map((item) {
-        final isSelected = selected == item;
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 1.0,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        final isSelected = item == selected;
+        final labelStr = label(item);
+        final emoji = labelStr.contains(' ') ? labelStr.split(' ').first : '';
+        final text = labelStr.contains(' ') ? labelStr.split(' ').skip(1).join(' ') : labelStr;
+
         return GestureDetector(
           onTap: () => onSelect(item),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeInOut,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Container(
             decoration: BoxDecoration(
-              color: isSelected
-                  ? SpendlyColors.primary
-                  : Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(10),
-              border: isSelected
-                  ? Border.all(color: SpendlyColors.primary, width: 1.5)
-                  : Border.all(color: Colors.transparent, width: 1.5),
-            ),
-            child: Text(
-              label(item),
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected
-                    ? Colors.white
-                    : Theme.of(context).colorScheme.onSurfaceVariant,
+              color: isSelected ? SpendlyColors.primary : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? SpendlyColors.primary : SpendlyColors.neutral200,
               ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (emoji.isNotEmpty)
+                  Text(emoji, style: const TextStyle(fontSize: 22))
+                else
+                  const Icon(Icons.category_outlined, size: 20),
+                const SizedBox(height: 4),
+                Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected ? Colors.white : SpendlyColors.neutral600,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
         );
-      }).toList(),
+      },
+    );
+  }
+}
+
+// ─── Spendly Filter Chip Row ──────────────────────────────────────────────────
+
+class SpendlyFilterChipRow<T> extends StatelessWidget {
+  final List<T> items;
+  final T? selected;
+  final String Function(T) label;
+  final void Function(T) onSelect;
+  final double height;
+
+  const SpendlyFilterChipRow({
+    super.key,
+    required this.items,
+    this.selected,
+    required this.label,
+    required this.onSelect,
+    this.height = 40.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          final isSelected = item == selected;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(label(item)),
+              selected: isSelected,
+              onSelected: (_) => onSelect(item),
+              backgroundColor: Colors.white,
+              selectedColor: SpendlyColors.primary,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.white : SpendlyColors.neutral700,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: isSelected ? SpendlyColors.primary : SpendlyColors.neutral200,
+                ),
+              ),
+              showCheckmark: false,
+            ),
+          );
+        },
+      ),
     );
   }
 }

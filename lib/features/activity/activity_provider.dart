@@ -4,6 +4,7 @@ import '../../core/models/app_user.dart';
 import '../groups/group_provider.dart';
 import '../settlements/settlement_provider.dart';
 import '../auth/auth_provider.dart';
+import '../expenses/expense_provider.dart';
 
 /// Derived activity feed: every group expense + settlement, sorted by timestamp descending.
 final activityProvider = Provider<List<ActivityEvent>>((ref) {
@@ -24,8 +25,8 @@ final activityProvider = Provider<List<ActivityEvent>>((ref) {
 
   final events = <ActivityEvent>[];
 
-  // ── Expenses ──────────────────────────────────────────────────────────────
-  final expenses = ref.watch(groupExpenseProvider);
+  // ── Expenses (All: Group + Personal) ───────────────────────────────────────
+  final expenses = ref.watch(expenseProvider);
   final groups = ref.watch(groupProvider);
 
   String groupName(String groupId) {
@@ -38,7 +39,7 @@ final activityProvider = Provider<List<ActivityEvent>>((ref) {
 
   for (final e in expenses) {
     final payer = userName(e.paidById);
-    final grpName = groupName(e.groupId);
+    final grpName = groupName(e.groupId ?? '');
     final isCurrentUserPayer = e.paidById == currentUserId;
 
     // How much does the current user owe or get back from this expense?

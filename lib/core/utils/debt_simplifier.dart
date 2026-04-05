@@ -1,10 +1,10 @@
-import '../models/group_expense.dart';
+import '../models/expense.dart';
 import '../models/settlement.dart';
 
 /// Implements the Minimize Cash Flow algorithm to reduce the number
 /// of transactions needed to settle all debts.
 ///
-/// Given a list of group expenses, it computes net balances for each user
+/// Given a list of expenses, it computes net balances for each user
 /// and returns the minimum set of payments required.
 class DebtSimplifier {
   /// Computes simplified debt suggestions for a group.
@@ -12,7 +12,7 @@ class DebtSimplifier {
   /// [expenses] — All expenses for the group.
   /// Returns a list of [DebtSuggestion] with minimum payments.
   static List<DebtSuggestion> simplify(
-    List<GroupExpense> expenses,
+    List<Expense> expenses,
     List<String> memberIds,
   ) {
     // Step 1: Compute net balance for each member
@@ -81,7 +81,7 @@ class DebtSimplifier {
   /// Computes raw (non-simplified) pairwise balances.
   /// Returns a map of pairId -> (fromUserId, toUserId, amount).
   static Map<String, double> computeNetBalances(
-    List<GroupExpense> expenses,
+    List<Expense> expenses,
     List<String> memberIds,
   ) {
     final Map<String, double> netBalance = {for (var id in memberIds) id: 0.0};

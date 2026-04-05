@@ -7,6 +7,7 @@ import '../../core/utils/formatters.dart';
 import '../../core/widgets/shared_widgets.dart';
 import '../auth/auth_provider.dart';
 import 'group_provider.dart';
+import '../expenses/expense_provider.dart';
 import '../settlements/settlement_provider.dart';
 
 class GroupDetailScreen extends ConsumerWidget {
@@ -177,61 +178,72 @@ class GroupDetailScreen extends ConsumerWidget {
                       final isCurrentUserPayee = s.toUserId == user?.id;
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: SpendlyCard(
-                          backgroundColor: isCurrentUserPayer
-                              ? SpendlyColors.warning.withAlpha(10)
-                              : isCurrentUserPayee
-                                  ? SpendlyColors.success.withAlpha(10)
-                                  : null,
-                          padding: const EdgeInsets.all(14),
-                          child: Row(
-                            children: [
-                              UserAvatar(
-                                name: fromUser?.name ?? s.fromUserId,
-                                userId: s.fromUserId,
-                                size: 36,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${isCurrentUserPayer ? 'You' : (fromUser?.name.split(' ').first ?? '?')} → ${isCurrentUserPayee ? 'You' : (toUser?.name.split(' ').first ?? '?')}',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                              fontWeight: FontWeight.w600),
-                                    ),
-                                    Text(
-                                      'Direct payment',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                              color: SpendlyColors.neutral500),
-                                    ),
-                                  ],
+                        child: GestureDetector(
+                          onTap: () {
+                            if (isCurrentUserPayer) {
+                              context.push('/settle?userId=${s.toUserId}');
+                            } else if (isCurrentUserPayee) {
+                              context.push('/settle?userId=${s.fromUserId}');
+                            } else {
+                              context.push('/settle?userId=${s.toUserId}');
+                            }
+                          },
+                          child: SpendlyCard(
+                            backgroundColor: isCurrentUserPayer
+                                ? SpendlyColors.warning.withAlpha(10)
+                                : isCurrentUserPayee
+                                    ? SpendlyColors.success.withAlpha(10)
+                                    : null,
+                            padding: const EdgeInsets.all(14),
+                            child: Row(
+                              children: [
+                                UserAvatar(
+                                  name: fromUser?.name ?? s.fromUserId,
+                                  userId: s.fromUserId,
+                                  size: 36,
                                 ),
-                              ),
-                              Text(
-                                AppFormatters.currency(s.amount),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: isCurrentUserPayer
-                                      ? SpendlyColors.danger
-                                      : SpendlyColors.success,
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${isCurrentUserPayer ? 'You' : (fromUser?.name.split(' ').first ?? '?')} → ${isCurrentUserPayee ? 'You' : (toUser?.name.split(' ').first ?? '?')}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                                fontWeight: FontWeight.w600),
+                                      ),
+                                      Text(
+                                        'Direct payment',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                                color: SpendlyColors.neutral500),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                                Text(
+                                  AppFormatters.currency(s.amount),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: isCurrentUserPayer
+                                        ? SpendlyColors.danger
+                                        : SpendlyColors.success,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
                     }),
                     const SizedBox(height: 8),
                     GestureDetector(
-                      onTap: () => context.go('/settlements'),
+                      onTap: () => context.push('/settle'),
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
@@ -241,7 +253,7 @@ class GroupDetailScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: const Text(
-                          'Settle Up →',
+                          'View All Settlements →',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: SpendlyColors.primary,
@@ -297,91 +309,122 @@ class GroupDetailScreen extends ConsumerWidget {
                         onTap: () => context.push(
                             '/groups/$groupId/expense/${expense.id}'),
                         child: SpendlyCard(
-                          padding: const EdgeInsets.all(14),
-                          child: Row(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: SpendlyColors.chartColors[
-                                          expense.category.index %
-                                              SpendlyColors.chartColors.length]
-                                      .withAlpha(25),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Center(
-                                  child: Text(expense.category.emoji,
-                                      style: const TextStyle(fontSize: 18)),
-                                ),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: SpendlyColors.chartColors[
+                                              expense.category.index %
+                                                  SpendlyColors.chartColors.length]
+                                          .withAlpha(25),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Center(
+                                      child: Text(expense.category.emoji,
+                                          style: const TextStyle(fontSize: 18)),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          expense.description,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(fontWeight: FontWeight.w600),
+                                        ),
+                                        Text(
+                                          isPaidByMe
+                                              ? 'Paid by you'
+                                              : 'Paid by ${paidByUser?.name.split(' ').first ?? '?'}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                  color: SpendlyColors.neutral500),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        AppFormatters.currency(expense.amount),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(fontWeight: FontWeight.w700),
+                                      ),
+                                      if (!isPaidByMe)
+                                        Text(
+                                          'Your share: ${AppFormatters.currency(myShare)}',
+                                          style: const TextStyle(
+                                            color: SpendlyColors.danger,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      expense.description,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(fontWeight: FontWeight.w600),
-                                    ),
-                                    Text(
-                                      isPaidByMe
-                                          ? 'Paid by you'
-                                          : 'Paid by ${paidByUser?.name.split(' ').first ?? '?'}',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                              color: SpendlyColors.neutral500),
-                                    ),
-                                    Text(
-                                      AppFormatters.shortDate(expense.date),
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                              color: SpendlyColors.neutral400),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
+                              const SizedBox(height: 12),
+                              Row(
                                 children: [
                                   Text(
-                                    AppFormatters.currency(expense.amount),
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(fontWeight: FontWeight.w700),
+                                    AppFormatters.shortDate(expense.date),
+                                    style: AppTextStyles.caption(color: SpendlyColors.neutral400),
                                   ),
-                                  if (!isPaidByMe)
-                                    Text(
-                                      'Your share: ${AppFormatters.currency(myShare)}',
-                                      style: const TextStyle(
-                                        color: SpendlyColors.danger,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
+                                  const Spacer(),
+                                  if (expense.approvals.isNotEmpty) ...[
+                                    Icon(Icons.check_circle_rounded, size: 14, color: SpendlyColors.success.withAlpha(180)),
+                                    const SizedBox(width: 4),
+                                    Text('${expense.approvals.length}', style: AppTextStyles.caption(color: SpendlyColors.success)),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  if (expense.rejections.isNotEmpty) ...[
+                                    Icon(Icons.cancel_rounded, size: 14, color: SpendlyColors.danger.withAlpha(180)),
+                                    const SizedBox(width: 4),
+                                    Text('${expense.rejections.length}', style: AppTextStyles.caption(color: SpendlyColors.danger)),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  if (!expense.approvals.contains(user?.id) && !expense.rejections.contains(user?.id) && !isPaidByMe) ...[
+                                    TextButton(
+                                      onPressed: () => ref.read(expenseActionProvider).rejectExpense(expense.id, user!.id),
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        foregroundColor: SpendlyColors.danger,
                                       ),
-                                    )
-                                  else
-                                    const Text(
-                                      'You paid',
-                                      style: TextStyle(
-                                        color: SpendlyColors.success,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                      child: const Text('Reject', style: TextStyle(fontSize: 11)),
                                     ),
-                                  const SizedBox(height: 4),
-                                  const Icon(
-                                    Icons.chevron_right_rounded,
-                                    size: 16,
-                                    color: SpendlyColors.neutral400,
-                                  ),
+                                    const SizedBox(width: 4),
+                                    TextButton(
+                                      onPressed: () => ref.read(expenseActionProvider).approveExpense(expense.id, user!.id),
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        foregroundColor: SpendlyColors.success,
+                                      ),
+                                      child: const Text('Approve', style: TextStyle(fontSize: 11)),
+                                    ),
+                                  ] else if (expense.approvals.contains(user?.id)) ...[
+                                    const Text('✓ Approved', style: TextStyle(color: SpendlyColors.success, fontSize: 11, fontWeight: FontWeight.w600)),
+                                  ] else if (expense.rejections.contains(user?.id)) ...[
+                                    const Text('✗ Rejected', style: TextStyle(color: SpendlyColors.danger, fontSize: 11, fontWeight: FontWeight.w600)),
+                                  ],
                                 ],
                               ),
                             ],

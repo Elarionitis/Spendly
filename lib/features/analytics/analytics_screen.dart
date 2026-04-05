@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/shared_widgets.dart';
+import '../groups/group_provider.dart';
 import 'analytics_provider.dart';
 
 class AnalyticsScreen extends ConsumerStatefulWidget {
@@ -25,9 +26,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
     
     // Subscribe to all groups to ensure analytics are accurate
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final groups = ref.read(groupProvider);
-      final groupIds = groups.map((g) => g.id).toList();
-      ref.read(groupExpenseProvider.notifier).subscribeToAll(groupIds);
+      // No longer need to subscribe per group, expenseProvider watches all user expenses at once
     });
   }
 
@@ -184,119 +183,140 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
           // Bar Chart - Monthly Spending
           const SectionHeader(title: '📅 Monthly Spending'),
           const SizedBox(height: 12),
-          SpendlyCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Last 6 Months',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: SpendlyColors.neutral500)),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 180,
-                  child: BarChart(
-                    BarChartData(
-                      alignment: BarChartAlignment.spaceAround,
-                      maxY: monthlyData
-                              .map((m) => m.total)
-                              .reduce((a, b) => a > b ? a : b) *
-                          1.3,
-                      barGroups: monthlyData.asMap().entries.map((e) {
-                        return BarChartGroupData(
-                          x: e.key,
-                          barRods: [
-                            BarChartRodData(
-                              toY: e.value.total,
-                              gradient: const LinearGradient(
-                                colors: [
-                                  SpendlyColors.primaryLight,
-                                  SpendlyColors.primary
-                                ],
-                                begin: Alignment.bottomCenter,
-                                end: Alignment.topCenter,
-                              ),
-                              width: 22,
-                              borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(6)),
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                      titlesData: FlTitlesData(
-                        leftTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
-                        rightTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
-                        topTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            getTitlesWidget: (value, meta) {
-                              final i = value.toInt();
-                              if (i >= 0 && i < monthlyData.length) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 6),
-                                  child: Text(
-                                    monthlyData[i].label,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(fontSize: 10),
+          monthlyData.isEmpty
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Text('No monthly data available',
+                        style: TextStyle(color: SpendlyColors.neutral400)),
+                  ),
+                )
+              : SpendlyCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Last 6 Months',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: SpendlyColors.neutral500)),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 180,
+                        child: BarChart(
+                          BarChartData(
+                            alignment: BarChartAlignment.spaceAround,
+                            maxY: monthlyData.isEmpty
+                                ? 100.0
+                                : monthlyData
+                                        .map((m) => m.total)
+                                        .reduce((a, b) => a > b ? a : b) *
+                                    1.3,
+                            barGroups: monthlyData.asMap().entries.map((e) {
+                              return BarChartGroupData(
+                                x: e.key,
+                                barRods: [
+                                  BarChartRodData(
+                                    toY: e.value.total,
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        SpendlyColors.primaryLight,
+                                        SpendlyColors.primary
+                                      ],
+                                      begin: Alignment.bottomCenter,
+                                      end: Alignment.topCenter,
+                                    ),
+                                    width: 22,
+                                    borderRadius: const BorderRadius.vertical(
+                                        top: Radius.circular(6)),
                                   ),
-                                );
-                              }
-                              return const SizedBox.shrink();
-                            },
+                                ],
+                              );
+                            }).toList(),
+                            titlesData: FlTitlesData(
+                              leftTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false)),
+                              rightTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false)),
+                              topTitles: const AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false)),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (value, meta) {
+                                    final i = value.toInt();
+                                    if (i >= 0 && i < monthlyData.length) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 6),
+                                        child: Text(
+                                          monthlyData[i].label,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(fontSize: 10),
+                                        ),
+                                      );
+                                    }
+                                    return const SizedBox.shrink();
+                                  },
+                                ),
+                              ),
+                            ),
+                            gridData: const FlGridData(show: false),
+                            borderData: FlBorderData(show: false),
                           ),
                         ),
                       ),
-                      gridData: const FlGridData(show: false),
-                      borderData: FlBorderData(show: false),
-                    ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
           const SizedBox(height: 20),
 
           // Line Chart - Daily Trend
           const SectionHeader(title: '📈 30-Day Trend'),
           const SizedBox(height: 12),
-          SpendlyCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Daily spending last 30 days',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: SpendlyColors.neutral500)),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 160,
-                  child: LineChart(
-                    LineChartData(
-                      gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: false,
-                        horizontalInterval: dailyData
-                                .map((d) => d.total)
-                                .reduce((a, b) => a > b ? a : b) /
-                            4,
-                        getDrawingHorizontalLine: (v) => FlLine(
-                          color: SpendlyColors.neutral200,
-                          strokeWidth: 1,
-                        ),
-                      ),
-                      titlesData: const FlTitlesData(
-                        leftTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
-                        rightTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
-                        topTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
-                        bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(showTitles: false)),
+          dailyData.isEmpty
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Text('No trend data available',
+                        style: TextStyle(color: SpendlyColors.neutral400)),
+                  ),
+                )
+              : SpendlyCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Daily spending last 30 days',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: SpendlyColors.neutral500)),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 160,
+                        child: LineChart(
+                          LineChartData(
+                            gridData: FlGridData(
+                              show: true,
+                              drawVerticalLine: false,
+                              horizontalInterval: (() {
+                                if (dailyData.isEmpty) return 1.0;
+                                final maxVal = dailyData
+                                    .map((d) => d.total)
+                                    .reduce((a, b) => a > b ? a : b);
+                                return maxVal > 0 ? maxVal / 4 : 1.0;
+                              })(),
+                              getDrawingHorizontalLine: (v) => FlLine(
+                                color: SpendlyColors.neutral200,
+                                strokeWidth: 1,
+                              ),
+                            ),
+                            titlesData: const FlTitlesData(
+                              leftTitles: AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false)),
+                              rightTitles: AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false)),
+                              topTitles: AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false)),
+                              bottomTitles: AxisTitles(
+                                  sideTitles: SideTitles(showTitles: false)),
                       ),
                       borderData: FlBorderData(show: false),
                       lineBarsData: [
@@ -474,70 +494,80 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
           // Bar Chart
           const SectionHeader(title: '📅 Monthly Group Spending'),
           const SizedBox(height: 12),
-          SpendlyCard(
-            child: SizedBox(
-              height: 180,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: (monthlyData
-                              .map((m) => m.total)
-                              .reduce((a, b) => a > b ? a : b) *
-                          1.3)
-                      .clamp(100, double.infinity),
-                  barGroups: monthlyData.asMap().entries.map((e) {
-                    return BarChartGroupData(
-                      x: e.key,
-                      barRods: [
-                        BarChartRodData(
-                          toY: e.value.total,
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF10B981), Color(0xFF059669)],
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                          ),
-                          width: 22,
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(6)),
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                  titlesData: FlTitlesData(
-                    leftTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          final i = value.toInt();
-                          if (i >= 0 && i < monthlyData.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Text(
-                                monthlyData[i].label,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(fontSize: 10),
+          monthlyData.isEmpty
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Text('No group monthly data',
+                        style: TextStyle(color: SpendlyColors.neutral400)),
+                  ),
+                )
+              : SpendlyCard(
+                  child: SizedBox(
+                    height: 180,
+                    child: BarChart(
+                      BarChartData(
+                        alignment: BarChartAlignment.spaceAround,
+                        maxY: (monthlyData.isEmpty
+                                ? 100.0
+                                : monthlyData
+                                        .map((m) => m.total)
+                                        .reduce((a, b) => a > b ? a : b) *
+                                    1.3)
+                            .clamp(10, double.infinity),
+                        barGroups: monthlyData.asMap().entries.map((e) {
+                          return BarChartGroupData(
+                            x: e.key,
+                            barRods: [
+                              BarChartRodData(
+                                toY: e.value.total,
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF10B981), Color(0xFF059669)],
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                ),
+                                width: 22,
+                                borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(6)),
                               ),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        },
+                            ],
+                          );
+                        }).toList(),
+                        titlesData: FlTitlesData(
+                          leftTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false)),
+                          rightTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false)),
+                          topTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: false)),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              getTitlesWidget: (value, meta) {
+                                final i = value.toInt();
+                                if (i >= 0 && i < monthlyData.length) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Text(
+                                      monthlyData[i].label,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(fontSize: 10),
+                                    ),
+                                  );
+                                }
+                                return const SizedBox.shrink();
+                              },
+                            ),
+                          ),
+                        ),
+                        gridData: const FlGridData(show: false),
+                        borderData: FlBorderData(show: false),
                       ),
                     ),
                   ),
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
                 ),
-              ),
-            ),
-          ),
           const SizedBox(height: 80),
         ],
       ),

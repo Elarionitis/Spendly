@@ -1,62 +1,16 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/models/personal_expense.dart';
+import '../../core/models/expense.dart';
 import '../../core/models/enums.dart';
-import '../../core/repositories/repository_providers.dart';
-import '../auth/auth_provider.dart';
+import '../expenses/expense_provider.dart';
 
-final personalExpenseProvider =
-    StateNotifierProvider<PersonalExpenseNotifier, List<PersonalExpense>>(
-        (ref) {
-  return PersonalExpenseNotifier(ref);
+// Redirect personalExpenseProvider to the unified expenseProvider
+final personalExpenseProvider = Provider<List<Expense>>((ref) {
+  return ref.watch(expenseProvider)
+      .where((e) => e.type == ExpenseType.personal)
+      .toList()
+    ..sort((a, b) => b.date.compareTo(a.date));
 });
-
-class PersonalExpenseNotifier extends StateNotifier<List<PersonalExpense>> {
-  final Ref _ref;
-  StreamSubscription? _subscription;
-
-  PersonalExpenseNotifier(this._ref) : super([]) {
-    _listenToExpenses();
-  }
-
-  void _listenToExpenses() {
-    final user = _ref.watch(authProvider);
-    if (user == null) {
-      state = [];
-      return;
-    }
-
-    _subscription?.cancel();
-    _subscription = _ref
-        .watch(personalExpenseRepositoryProvider)
-        .watchPersonalExpenses(user.id)
-        .listen((expenses) => state = expenses);
-  }
-
-  Future<void> addExpense(PersonalExpense expense) async {
-    final user = _ref.read(authProvider);
-    if (user == null) return;
-    await _ref.read(personalExpenseRepositoryProvider).addPersonalExpense(user.id, expense);
-  }
-
-  Future<void> updateExpense(PersonalExpense updated) async {
-    final user = _ref.read(authProvider);
-    if (user == null) return;
-    await _ref.read(personalExpenseRepositoryProvider).updatePersonalExpense(user.id, updated);
-  }
-
-  Future<void> deleteExpense(String id) async {
-    final user = _ref.read(authProvider);
-    if (user == null) return;
-    await _ref.read(personalExpenseRepositoryProvider).deletePersonalExpense(user.id, id);
-  }
-
-  @override
-  void dispose() {
-    _subscription?.cancel();
-    super.dispose();
-  }
-}
 
 // ─── Filter State ─────────────────────────────────────────────────────────────
 
@@ -86,7 +40,7 @@ final personalExpenseFilterProvider =
     StateProvider<PersonalExpenseFilter>((ref) => const PersonalExpenseFilter());
 
 final filteredPersonalExpensesProvider =
-    Provider<List<PersonalExpense>>((ref) {
+    Provider<List<Expense>>((ref) {
   final expenses = ref.watch(personalExpenseProvider);
   final filter = ref.watch(personalExpenseFilterProvider);
 

@@ -169,7 +169,7 @@ class _AddGroupScreenState extends ConsumerState<AddGroupScreen> {
     );
   }
 
-  void _createGroup() {
+  Future<void> _createGroup() async {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a group name')),
@@ -186,7 +186,9 @@ class _AddGroupScreenState extends ConsumerState<AddGroupScreen> {
       createdAt: DateTime.now(),
       emoji: _selectedEmoji,
     );
-    ref.read(groupProvider.notifier).addGroup(group);
-    context.go('/groups/${group.id}');
+    await ref.read(groupActionProvider).addGroup(group);
+    if (context.mounted) {
+      context.go('/groups/${group.id}');
+    }
   }
 }

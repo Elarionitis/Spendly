@@ -9,19 +9,19 @@ import '../../features/dashboard/dashboard_screen.dart';
 
 import '../../features/groups/groups_screen.dart';
 import '../../features/groups/group_detail_screen.dart';
-import '../../features/groups/add_group_expense_screen.dart';
 import '../../features/groups/add_group_screen.dart';
 import '../../features/groups/group_settings_screen.dart';
 
 import '../../features/expenses/transaction_detail_screen.dart';
+import '../../features/expenses/add_expense_screen.dart';
 
 import '../../features/personal_finance/personal_expenses_screen.dart';
-import '../../features/personal_finance/add_personal_expense_screen.dart';
 
 import '../../features/analytics/analytics_screen.dart';
 
 import '../../features/settlements/settlements_screen.dart';
 import '../../features/settlements/settle_up_screen.dart';
+import '../../features/settlements/balance_selection_screen.dart';
 
 import '../../features/friends/friends_screen.dart';
 import '../../features/friends/friend_detail_screen.dart';
@@ -100,7 +100,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                     name: 'add-group-expense',
                     builder: (context, state) {
                       final groupId = state.pathParameters['id']!;
-                      return AddGroupExpenseScreen(groupId: groupId);
+                      final extra = state.extra as Map<String, dynamic>?;
+                      final expenseId = extra?['expenseId'] as String?;
+                      return AddExpenseScreen(
+                        groupId: groupId,
+                        expenseId: expenseId,
+                      );
                     },
                   ),
                   GoRoute(
@@ -174,7 +179,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) {
                   final extra = state.extra as Map<String, dynamic>?;
                   final expenseId = extra?['expenseId'] as String?;
-                  return AddPersonalExpenseScreen(expenseId: expenseId);
+                  return AddExpenseScreen(expenseId: expenseId);
                 },
               ),
             ],
@@ -197,8 +202,22 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'settle',
             builder: (context, state) {
               final userId = state.uri.queryParameters['userId'];
-              return SettleUpScreen(preselectedUserId: userId);
+              final groupId = state.uri.queryParameters['groupId'];
+              return SettleUpScreen(
+                preselectedUserId: userId,
+                groupId: groupId,
+              );
             },
+            routes: [
+              GoRoute(
+                path: 'select',
+                name: 'settle-select',
+                builder: (context, state) {
+                  final userId = state.uri.queryParameters['userId'] ?? '';
+                  return BalanceSelectionScreen(friendUserId: userId);
+                },
+              ),
+            ],
           ),
         ],
       ),

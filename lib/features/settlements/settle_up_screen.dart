@@ -9,7 +9,8 @@ import '../../core/models/enums.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
 import '../auth/auth_provider.dart';
-import '../settlements/settlement_provider.dart';
+import 'settlement_provider.dart';
+import '../expenses/expense_provider.dart';
 
 const _uuid = Uuid();
 
@@ -22,8 +23,9 @@ const _uuid = Uuid();
 class SettleUpScreen extends ConsumerStatefulWidget {
   /// Pre-selected friend user ID (optional, passed from Friends tab).
   final String? preselectedUserId;
+  final String? groupId;
 
-  const SettleUpScreen({super.key, this.preselectedUserId});
+  const SettleUpScreen({super.key, this.preselectedUserId, this.groupId});
 
   @override
   ConsumerState<SettleUpScreen> createState() => _SettleUpScreenState();
@@ -35,6 +37,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   final _txnController = TextEditingController();
   String? _proofImagePath;
   final _picker = ImagePicker();
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -51,14 +54,31 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   }
 
   double _getBalanceWith(String friendId) {
-    final balances = ref.read(friendBalanceProvider);
+    final balances = ref.read(globalBalancesProvider);
     return balances[friendId] ?? 0.0;
   }
 
   void _prefillAmount() {
     if (_selectedFriendId == null) return;
-    final balance = _getBalanceWith(_selectedFriendId!);
-    // Pre-fill with the absolute debt/credit amount
+    
+    if (widget.groupId != null && widget.groupId!.isNotEmpty) {
+      final groups = ref.read(groupBalancesWithFriendProvider(_selectedFriendId!));
+      final record = groups.where((g) => g['groupId'] == widget.groupId).firstOrNull;
+      if (record != null) {
+        _amountController.text = (record['balance'] as double).abs().toStringAsFixed(2);
+        return;
+      }
+    } else if (widget.groupId == '') {
+       // Specifically requested personal/non-group expenses
+       final groups = ref.read(groupBalancesWithFriendProvider(_selectedFriendId!));
+       final record = groups.where((g) => g['groupId'] == '__personal__').firstOrNull;
+       if (record != null) {
+         _amountController.text = (record['balance'] as double).abs().toStringAsFixed(2);
+         return;
+       }
+    }
+    
+    double balance = _getBalanceWith(_selectedFriendId!);
     _amountController.text = balance.abs().toStringAsFixed(2);
   }
 
@@ -82,12 +102,12 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider);
-    final balances = ref.watch(friendBalanceProvider);
+    final balances = ref.watch(globalBalancesProvider);
     final usersAsync = ref.watch(allUsersProvider);
     final users = usersAsync.value ?? [];
     final cs = Theme.of(context).colorScheme;
 
-    // All known friends (from groups) except self
+    // All known friends except self
     final friends = users.where((u) => u.id != user?.id).toList();
 
     final balance =
@@ -101,11 +121,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     final friendName =
         friendUser?.name?.toString().split(' ').first ?? 'Friend';
 
-    // Determine direction
-    // balance > 0  → friend owes us  → friend is the FROM (paying us) — but WE are initiating on their behalf
-    // balance < 0  → we owe friend   → we are the FROM
     final weOwe = balance < 0;
-    final theyOwe = balance > 0;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settle Up')),
@@ -115,41 +131,67 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── Friend Selector ────────────────────────────────────────────
-            Text('Who are you settling with?',
-                style: AppTextStyles.sectionLabel()),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              decoration: BoxDecoration(
-                color: cs.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: SpendlyColors.neutral200),
+            if (widget.preselectedUserId != null && friendUser != null)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: SpendlyColors.neutral200),
+                ),
+                child: Row(
+                  children: [
+                    UserAvatar(name: friendUser.name, userId: friendUser.id, size: 48),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Settling with', style: AppTextStyles.caption()),
+                          Text(friendUser.name, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else ...[
+              Text('Who are you settling with?',
+                  style: AppTextStyles.sectionLabel()),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: SpendlyColors.neutral200),
+                ),
+                child: DropdownButton<String>(
+                  value: _selectedFriendId,
+                  hint: const Text('Select friend'),
+                  isExpanded: true,
+                  underline: const SizedBox.shrink(),
+                  items: friends
+                      .map((u) => DropdownMenuItem<String>(
+                            value: u.id,
+                            child: Row(
+                              children: [
+                                UserAvatar(name: u.name, userId: u.id, size: 28),
+                                const SizedBox(width: 10),
+                                Text(u.name),
+                              ],
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    setState(() {
+                      _selectedFriendId = v;
+                      _prefillAmount();
+                    });
+                  },
+                ),
               ),
-              child: DropdownButton<String>(
-                value: _selectedFriendId,
-                hint: const Text('Select friend'),
-                isExpanded: true,
-                underline: const SizedBox.shrink(),
-                items: friends
-                    .map((u) => DropdownMenuItem<String>(
-                          value: u.id,
-                          child: Row(
-                            children: [
-                              UserAvatar(name: u.name, userId: u.id, size: 28),
-                              const SizedBox(width: 10),
-                              Text(u.name),
-                            ],
-                          ),
-                        ))
-                    .toList(),
-                onChanged: (v) {
-                  setState(() {
-                    _selectedFriendId = v;
-                    _prefillAmount();
-                  });
-                },
-              ),
-            ),
+            ],
             const SizedBox(height: 20),
 
             // ── Balance Info Card ──────────────────────────────────────────
@@ -180,9 +222,11 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        weOwe
-                            ? 'You owe $friendName ₹${balance.abs().toStringAsFixed(2)}'
-                            : '$friendName owes you ₹${balance.abs().toStringAsFixed(2)}',
+                        widget.groupId != null && widget.groupId!.isNotEmpty
+                            ? 'Group balance: ₹${balance.abs().toStringAsFixed(2)}'
+                            : weOwe
+                                ? 'You owe $friendName ₹${balance.abs().toStringAsFixed(2)}'
+                                : '$friendName owes you ₹${balance.abs().toStringAsFixed(2)}',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           color: weOwe
@@ -196,7 +240,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                theyOwe
+                balance > 0
                     ? 'You can record payment you received or request it.'
                     : 'Enter the amount you are paying now (partial okay).',
                 style: AppTextStyles.caption(color: SpendlyColors.neutral500),
@@ -223,6 +267,32 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 20),
+            ],
+
+            // ── Recent Activity Breakdown ──────────────────────────────────
+            if (_selectedFriendId != null) ...[
+              Text('Recent Shared Activity', style: AppTextStyles.sectionLabel()),
+              const SizedBox(height: 10),
+              ref.watch(expenseProvider).where((e) => e.participants.contains(_selectedFriendId!) && e.participants.contains(user?.id)).take(3).isEmpty
+                ? Text('No recent shared expenses', style: AppTextStyles.caption())
+                : Column(
+                    children: ref.watch(expenseProvider)
+                        .where((e) => e.participants.contains(_selectedFriendId!) && e.participants.contains(user?.id))
+                        .take(3)
+                        .map((e) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                children: [
+                                  Text(e.category.emoji, style: const TextStyle(fontSize: 14)),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: Text(e.description, style: AppTextStyles.caption(), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                  Text('₹${e.amount.toStringAsFixed(0)}', style: AppTextStyles.caption().copyWith(fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ))
+                        .toList(),
+                  ),
               const SizedBox(height: 20),
             ],
 
@@ -353,14 +423,20 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                       : null,
                 ),
                 child: Center(
-                  child: Text(
-                    'Submit Settlement',
-                    style: AppTextStyles.button().copyWith(
-                      color: _selectedFriendId != null
-                          ? Colors.white
-                          : SpendlyColors.neutral500,
-                    ),
-                  ),
+                  child: _isSubmitting 
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : Text(
+                        'Submit Settlement',
+                        style: AppTextStyles.button().copyWith(
+                          color: _selectedFriendId != null
+                              ? Colors.white
+                              : SpendlyColors.neutral500,
+                        ),
+                      ),
                 ),
               ),
             ),
@@ -371,12 +447,13 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     );
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_selectedFriendId == null) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Select a friend first')));
       return;
     }
+
     final amount = double.tryParse(_amountController.text);
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -385,13 +462,23 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
     }
 
     final user = ref.read(authProvider)!;
-    final balance = _getBalanceWith(_selectedFriendId!);
+    double balance = _getBalanceWith(_selectedFriendId!);
+
+    if (widget.groupId != null && widget.groupId!.isNotEmpty) {
+      final groupBreakdown = ref.read(groupBalancesWithFriendProvider(_selectedFriendId!));
+      final record = groupBreakdown.where((g) => g['groupId'] == widget.groupId).firstOrNull;
+      balance = (record?['balance'] as double?) ?? 0.0;
+    } else if (widget.groupId == '') {
+      final groupBreakdown = ref.read(groupBalancesWithFriendProvider(_selectedFriendId!));
+      final record = groupBreakdown.where((g) => g['groupId'] == '__personal__').firstOrNull;
+      balance = (record?['balance'] as double?) ?? 0.0;
+    }
 
     // Determine payer direction
     final String fromUserId;
     final String toUserId;
-    if (balance < 0) {
-      // We owe them — we are paying
+    if (balance <= 0) {
+      // We owe them (or it's 0 but we are forcing a payment) — we are paying
       fromUserId = user.id;
       toUserId = _selectedFriendId!;
     } else {
@@ -400,23 +487,47 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       toUserId = user.id;
     }
 
-    final settlement = Settlement(
-      id: _uuid.v4(),
-      fromUserId: fromUserId,
-      toUserId: toUserId,
-      amount: amount,
-      status: SettlementStatus.pendingVerification,
-      createdAt: DateTime.now(),
-      transactionId:
-          _txnController.text.isNotEmpty ? _txnController.text : null,
-      proofImagePath: _proofImagePath,
-    );
+    setState(() => _isSubmitting = true);
 
-    ref.read(settlementProvider.notifier).initiateSettlement(settlement);
+    try {
+      final settlement = Settlement(
+        id: const Uuid().v4(),
+        fromUserId: fromUserId,
+        toUserId: toUserId,
+        amount: amount,
+        status: SettlementStatus.pendingVerification,
+        createdAt: DateTime.now(),
+        transactionId:
+            _txnController.text.isNotEmpty ? _txnController.text : null,
+        proofImagePath: _proofImagePath,
+        groupId: widget.groupId != null && widget.groupId!.isNotEmpty ? widget.groupId : null,
+      );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Settlement submitted! ✓')),
-    );
-    context.pop();
+      await ref.read(settlementActionProvider).createSettlement(
+        settlement,
+        imageFile: _proofImagePath != null ? File(_proofImagePath!) : null,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Settlement submitted successfully! ✓'),
+            backgroundColor: SpendlyColors.success,
+          ),
+        );
+        context.pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to submit settlement: $e'),
+            backgroundColor: SpendlyColors.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 }

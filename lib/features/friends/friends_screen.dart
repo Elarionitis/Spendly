@@ -4,9 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
-import '../auth/auth_provider.dart';
 import '../groups/group_provider.dart';
-import '../settlements/settlement_provider.dart';
+import '../../features/settlements/settlement_provider.dart'; // Keep if used for globalBalancesProvider
 
 class FriendsScreen extends ConsumerWidget {
   const FriendsScreen({super.key});
@@ -14,6 +13,7 @@ class FriendsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final friends = ref.watch(friendsProvider);
+    final balances = ref.watch(globalBalancesProvider);
 
     // Overall owe / owed
     double totalOwe = 0;
@@ -87,7 +87,17 @@ class FriendsScreen extends ConsumerWidget {
                         balance: balance,
                         onTap: () => context.go('/friends/${friend.id}'),
                         onSettle: () =>
-                            context.go('/settle?userId=${friend.id}'),
+                            context.push('/settle/select?userId=${friend.id}'),
+                        onRemind: balance > 0
+                            ? () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Reminder sent to ${friend.name.split(' ').first}!'),
+                                    backgroundColor: SpendlyColors.primary,
+                                  ),
+                                );
+                              }
+                            : null,
                       ).animate().fadeIn(delay: (i * 60).ms);
                     },
                   ),
@@ -139,6 +149,7 @@ class _FriendTile extends StatelessWidget {
   final double balance; // positive: they owe you; negative: you owe them
   final VoidCallback onTap;
   final VoidCallback onSettle;
+  final VoidCallback? onRemind;
 
   const _FriendTile({
     required this.userId,
@@ -148,6 +159,7 @@ class _FriendTile extends StatelessWidget {
     required this.balance,
     required this.onTap,
     required this.onSettle,
+    this.onRemind,
   });
 
   @override
@@ -193,22 +205,44 @@ class _FriendTile extends StatelessWidget {
               color: color,
             ),
           ),
-          if (!isEven)
-            GestureDetector(
-              onTap: onSettle,
-              child: Container(
-                margin: const EdgeInsets.only(top: 4),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: SpendlyColors.primary.withAlpha(15),
-                  borderRadius: BorderRadius.circular(6),
+          if (!isEven) ...[
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (onRemind != null)
+                  GestureDetector(
+                    onTap: onRemind,
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 4, right: 6),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: SpendlyColors.warning.withAlpha(15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text('Remind',
+                          style: AppTextStyles.caption(
+                              color: SpendlyColors.warning)),
+                    ),
+                  ),
+                GestureDetector(
+                  onTap: onSettle,
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: SpendlyColors.primary.withAlpha(15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text('Settle',
+                        style: AppTextStyles.caption(
+                            color: SpendlyColors.primary)),
+                  ),
                 ),
-                child: Text('Settle',
-                    style: AppTextStyles.caption(
-                        color: SpendlyColors.primary)),
-              ),
+              ],
             ),
+          ],
         ],
       ),
     );

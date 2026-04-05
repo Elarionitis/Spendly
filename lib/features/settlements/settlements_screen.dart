@@ -25,8 +25,7 @@ class SettlementsScreen extends ConsumerStatefulWidget {
 class _SettlementsScreenState extends ConsumerState<SettlementsScreen> {
   final _txnController = TextEditingController();
   final _amountController = TextEditingController();
-  String? _selectedGroupId;
-  double? _settleAmount;
+  String? _selectedFriendId;
   String? _proofImagePath;
   final _picker = ImagePicker();
 
@@ -56,17 +55,20 @@ class _SettlementsScreenState extends ConsumerState<SettlementsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final balance = ref.watch(overallBalanceProvider);
-    final settlements = ref.watch(userSettlementsProvider);
-    final groups = ref.watch(groupProvider);
+    final balanceMap = ref.watch(globalBalancesProvider);
+    final settlements = ref.watch(settlementProvider); // Use settlementProvider directly
+    final usersAsync = ref.watch(allUsersProvider);
+    final users = usersAsync.value ?? [];
     final user = ref.watch(authProvider);
 
-    final owe = balance['owe'] ?? 0.0;
-    final owed = balance['owed'] ?? 0.0;
-    final net = balance['net'] ?? 0.0;
+    final net = ref.watch(overallBalanceProvider)['net'] ?? 0.0;
+    final owe = ref.watch(overallBalanceProvider)['owe'] ?? 0.0;
+    final owed = ref.watch(overallBalanceProvider)['owed'] ?? 0.0;
+
+    final friends = users.where((u) => u.id != user?.id).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settle Up')),
+      appBar: AppBar(title: const Text('Settlements')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -108,62 +110,18 @@ class _SettlementsScreenState extends ConsumerState<SettlementsScreen> {
             Row(
               children: [
                 Expanded(
-                  child: SpendlyCard(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          const Icon(Icons.arrow_upward_rounded,
-                              color: SpendlyColors.danger, size: 14),
-                          const SizedBox(width: 4),
-                          Text('You Owe',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: SpendlyColors.neutral500)),
-                        ]),
-                        const SizedBox(height: 6),
-                        Text(AppFormatters.currency(owe),
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: SpendlyColors.danger)),
-                      ],
-                    ),
-                  ),
+                  child: _buildMiniStatCard('You Owe', owe, SpendlyColors.danger, Icons.arrow_upward_rounded),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: SpendlyCard(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          const Icon(Icons.arrow_downward_rounded,
-                              color: SpendlyColors.success, size: 14),
-                          const SizedBox(width: 4),
-                          Text('Owed to You',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: SpendlyColors.neutral500)),
-                        ]),
-                        const SizedBox(height: 6),
-                        Text(AppFormatters.currency(owed),
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: SpendlyColors.success)),
-                      ],
-                    ),
-                  ),
+                  child: _buildMiniStatCard('Owed to You', owed, SpendlyColors.success, Icons.arrow_downward_rounded),
                 ),
               ],
             ).animate().fadeIn(delay: 100.ms),
             const SizedBox(height: 24),
 
-            // Initiate Settlement
-            const SectionHeader(title: 'Initiate Settlement'),
+            // Quick Settle
+            const SectionHeader(title: 'Record a Settlement'),
             const SizedBox(height: 12),
             SpendlyCard(
               padding: const EdgeInsets.all(16),
@@ -178,23 +136,26 @@ class _SettlementsScreenState extends ConsumerState<SettlementsScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.group_outlined, color: SpendlyColors.neutral500, size: 20),
+                        const Icon(Icons.person_outline, color: SpendlyColors.neutral500, size: 20),
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButton<String>(
-                            value: _selectedGroupId,
-                            hint: const Text('Select Group'),
+                            value: _selectedFriendId,
+                            hint: const Text('Select Friend'),
                             isExpanded: true,
                             underline: const SizedBox.shrink(),
-                            items: groups
-                                .map((g) => DropdownMenuItem(
-                                    value: g.id,
-                                    child: Text('${g.emoji ?? ''} ${g.name}')))
+                            items: friends
+                                .map((u) => DropdownMenuItem(
+                                    value: u.id,
+                                    child: Text(u.name)))
                                 .toList(),
                             onChanged: (v) {
                               setState(() {
-                                _selectedGroupId = v;
-                                _computeSuggestedAmount(v, user?.id ?? '');
+                                _selectedFriendId = v;
+                                if (v != null) {
+                                  final b = balanceMap[v] ?? 0;
+                                  _amountController.text = b.abs().toStringAsFixed(2);
+                                }
                               });
                             },
                           ),
@@ -203,179 +164,76 @@ class _SettlementsScreenState extends ConsumerState<SettlementsScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // ── Amount Input ──────────────────────────────────────────
                   TextField(
                     controller: _amountController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: 'Settlement Amount',
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Amount',
                       prefixText: '₹ ',
-                      prefixIcon: const Icon(Icons.currency_rupee_rounded),
-                      hintText: _settleAmount != null && _settleAmount! > 0
-                          ? 'Suggested: ${_settleAmount!.toStringAsFixed(2)}'
-                          : 'Enter amount',
+                      prefixIcon: Icon(Icons.currency_rupee_rounded),
                     ),
                   ),
-                  if (_settleAmount != null && _settleAmount! > 0) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: SpendlyColors.warning.withAlpha(15),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: SpendlyColors.warning.withAlpha(60)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.info_outline,
-                              color: SpendlyColors.warning, size: 18),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Suggested: ${AppFormatters.currency(_settleAmount!)}',
-                              style: const TextStyle(
-                                  color: SpendlyColors.warning,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 12),
-                  // ── Transaction ID (optional) ─────────────────────────────
                   TextField(
                     controller: _txnController,
                     decoration: const InputDecoration(
                       labelText: 'Transaction ID (optional)',
                       prefixIcon: Icon(Icons.tag_rounded),
-                      hintText: 'e.g., UPI123456789',
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // ── Payment Screenshot (optional) ─────────────────────────
-                  Row(
-                    children: [
-                      Text('Payment Screenshot',
-                          style: AppTextStyles.sectionLabel()),
-                      const SizedBox(width: 6),
-                      Text('(optional)',
-                          style: AppTextStyles.caption(
-                              color: SpendlyColors.neutral400)),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  if (_proofImagePath != null) ...[
-                    Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.file(
-                            File(_proofImagePath!),
-                            width: double.infinity,
-                            height: 140,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: GestureDetector(
-                            onTap: () =>
-                                setState(() => _proofImagePath = null),
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.close,
-                                  color: Colors.white, size: 18),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                  ],
                   Row(children: [
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () => _pickImage(ImageSource.camera),
                         icon: const Icon(Icons.camera_alt_outlined, size: 16),
                         label: const Text('Camera'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(0, 40),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () => _pickImage(ImageSource.gallery),
-                        icon:
-                            const Icon(Icons.photo_library_outlined, size: 16),
+                        icon: const Icon(Icons.photo_library_outlined, size: 16),
                         label: const Text('Gallery'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(0, 40),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                        ),
                       ),
                     ),
                   ]),
+                  if (_proofImagePath != null) ...[
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(File(_proofImagePath!), height: 80, width: double.infinity, fit: BoxFit.cover),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   GestureDetector(
-                    onTap: _selectedGroupId == null ? null : _initiateSettlement,
+                    onTap: _selectedFriendId == null ? null : _initiateSettlement,
                     child: Container(
                       width: double.infinity,
                       height: 48,
                       decoration: BoxDecoration(
-                        gradient: _selectedGroupId == null
-                            ? null
-                            : SpendlyColors.primaryGradient,
-                        color: _selectedGroupId == null ? SpendlyColors.neutral200 : null,
+                        gradient: _selectedFriendId == null ? null : SpendlyColors.primaryGradient,
+                        color: _selectedFriendId == null ? SpendlyColors.neutral200 : null,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Center(
-                        child: Text(
-                          'Submit Settlement Request',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                        child: Text('Submit Settlement', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 200.ms),
+            ),
             const SizedBox(height: 24),
 
-            // Settlements History
-            SectionHeader(
-              title: 'Settlement History',
-              actionLabel: settlements.isEmpty ? null : '${settlements.length}',
-            ),
+            // History
+            SectionHeader(title: 'Settlement Activity', actionLabel: '${settlements.length}'),
             const SizedBox(height: 12),
             if (settlements.isEmpty)
-              const EmptyState(
-                icon: Icons.handshake_outlined,
-                title: 'No settlements',
-                subtitle: 'Your settlement history will appear here',
-              )
+              const EmptyState(icon: Icons.history, title: 'No activity', subtitle: 'Settlements will appear here')
             else
-              ...settlements.asMap().entries.map((e) {
-                final s = e.value;
-                return _buildSettlementCard(context, ref, s, user?.id ?? '')
-                    .animate()
-                    .fadeIn(delay: (300 + e.key * 60).ms);
-              }),
+              ...settlements.map((s) => _buildSettlementCard(context, ref, s, user?.id ?? '')),
             const SizedBox(height: 80),
           ],
         ),
@@ -383,114 +241,93 @@ class _SettlementsScreenState extends ConsumerState<SettlementsScreen> {
     );
   }
 
-  Widget _buildSettlementCard(BuildContext context, WidgetRef ref,
-      Settlement s, String currentUserId) {
+  Widget _buildMiniStatCard(String label, double amount, Color color, IconData icon) {
+    return SpendlyCard(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [Icon(icon, color: color, size: 12), const SizedBox(width: 4), Text(label, style: const TextStyle(fontSize: 10, color: SpendlyColors.neutral500))]),
+          const SizedBox(height: 4),
+          Text(AppFormatters.currency(amount), style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 14)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettlementCard(BuildContext context, WidgetRef ref, Settlement s, String currentUserId) {
     final isReceiving = s.toUserId == currentUserId;
-    final isPending = s.isPending;
     final otherUserId = isReceiving ? s.fromUserId : s.toUserId;
     final otherUser = ref.read(userByIdProvider(otherUserId));
-
-    StatusBadge badge;
-    if (s.isVerified) {
-      badge = StatusBadge.verified();
-    } else if (s.isRejected) {
-      badge = StatusBadge.rejected();
-    } else {
-      badge = StatusBadge.pending();
-    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: SpendlyCard(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                UserAvatar(
-                  name: otherUser?.name ?? otherUserId,
-                  userId: otherUserId,
-                  size: 40,
-                ),
+                UserAvatar(name: otherUser?.name ?? '?', userId: otherUserId, size: 40),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        isReceiving
-                            ? '${otherUser?.name.split(' ').first ?? 'Someone'} owes you'
-                            : 'You owe ${otherUser?.name.split(' ').first ?? 'Someone'}',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      if (s.transactionId != null)
-                        Text(
-                          'Txn: ${s.transactionId}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: SpendlyColors.neutral500,
-                              ),
-                        ),
+                      Text(isReceiving ? '${otherUser?.name.split(' ').first} paid you' : 'You paid ${otherUser?.name.split(' ').first}',
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(AppFormatters.shortDate(s.createdAt), style: const TextStyle(fontSize: 11, color: SpendlyColors.neutral400)),
                     ],
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      AppFormatters.currency(s.amount),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        color: isReceiving
-                            ? SpendlyColors.success
-                            : SpendlyColors.danger,
-                      ),
-                    ),
-                    Text(
-                      AppFormatters.shortDate(s.createdAt),
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: SpendlyColors.neutral500),
-                    ),
-                  ],
-                ),
+                Text(AppFormatters.currency(s.amount), style: TextStyle(fontWeight: FontWeight.w900, color: isReceiving ? SpendlyColors.success : SpendlyColors.danger)),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
+            if (s.proofUrl != null) ...[
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () => _showProofDialog(context, s.proofUrl!),
+                child: Container(
+                  height: 100,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    image: DecorationImage(
+                      image: NetworkImage(s.proofUrl!),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.black26,
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.zoom_in_rounded, color: Colors.white, size: 28),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
             Row(
               children: [
-                badge,
+                _buildStatusChip(s),
                 const Spacer(),
-                if (isPending && isReceiving) ...[
-                  TextButton(
-                    onPressed: () =>
-                        ref.read(settlementProvider.notifier).verify(s.id),
-                    style: TextButton.styleFrom(
-                        foregroundColor: SpendlyColors.success,
-                        padding: const EdgeInsets.symmetric(horizontal: 12)),
-                    child: const Text('Approve'),
+                if (s.isPending && isReceiving) ...[
+                  _ActionButton(
+                    label: 'Approve',
+                    color: SpendlyColors.success,
+                    onPressed: () => ref.read(settlementActionProvider).approveSettlement(s.id, currentUserId),
                   ),
-                  TextButton(
-                    onPressed: () =>
-                        ref.read(settlementProvider.notifier).reject(s.id),
-                    style: TextButton.styleFrom(
-                        foregroundColor: SpendlyColors.danger,
-                        padding: const EdgeInsets.symmetric(horizontal: 8)),
-                    child: const Text('Reject'),
+                  const SizedBox(width: 8),
+                  _ActionButton(
+                    label: 'Reject',
+                    color: SpendlyColors.danger,
+                    onPressed: () => ref.read(settlementActionProvider).rejectSettlement(s.id, currentUserId),
                   ),
-                ] else if (isPending && !isReceiving)
-                  Text(
-                    'Awaiting approval',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: SpendlyColors.neutral500,
-                          fontStyle: FontStyle.italic,
-                        ),
-                  ),
+                ]
               ],
             ),
           ],
@@ -499,83 +336,129 @@ class _SettlementsScreenState extends ConsumerState<SettlementsScreen> {
     );
   }
 
-  void _computeSuggestedAmount(String? groupId, String currentUserId) {
-    if (groupId == null) return;
-    final netBalances = ref.read(groupNetBalanceProvider(groupId));
-    final userBalance = netBalances[currentUserId] ?? 0;
-    final suggested = userBalance < 0 ? -userBalance : null;
-    setState(() {
-      _settleAmount = suggested;
-      if (suggested != null && suggested > 0) {
-        _amountController.text = suggested.toStringAsFixed(2);
-      } else {
-        _amountController.clear();
-      }
-    });
+  Widget _buildStatusChip(Settlement s) {
+    if (s.isVerified) return StatusBadge.verified();
+    if (s.isRejected) return StatusBadge.rejected();
+    return StatusBadge.pending();
   }
 
   void _initiateSettlement() {
-    if (_selectedGroupId == null) return;
     final user = ref.read(authProvider);
-    if (user == null) return;
+    if (user == null || _selectedFriendId == null) return;
 
-    final enteredAmount = double.tryParse(_amountController.text);
-    if (enteredAmount == null || enteredAmount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid settlement amount')),
-      );
-      return;
-    }
+    final amount = double.tryParse(_amountController.text) ?? 0;
+    if (amount <= 0) return;
 
-    final suggestions =
-        ref.read(debtSuggestionsProvider(_selectedGroupId!));
-    final relevantSuggestion = suggestions.cast<DebtSuggestion?>().firstWhere(
-          (s) => s?.fromUserId == user.id,
-          orElse: () => null,
-        );
-
-    // Determine who to pay
-    String toUserId;
-    if (relevantSuggestion != null) {
-      toUserId = relevantSuggestion.toUserId;
-    } else {
-      // Fallback: find user with highest positive balance in the group
-      final netBalances = ref.read(groupNetBalanceProvider(_selectedGroupId!));
-      final creditor = netBalances.entries
-          .where((e) => e.key != user.id && e.value > 0)
-          .toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
-      if (creditor.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No outstanding balance to settle in this group')),
-        );
-        return;
-      }
-      toUserId = creditor.first.key;
-    }
+    final balances = ref.read(globalBalancesProvider);
+    final balance = balances[_selectedFriendId!] ?? 0;
 
     final s = Settlement(
-      id: _uuid.v4(),
-      fromUserId: user.id,
-      toUserId: toUserId,
-      amount: enteredAmount,
+      id: const Uuid().v4(),
+      fromUserId: balance <= 0 ? user.id : _selectedFriendId!,
+      toUserId: balance <= 0 ? _selectedFriendId! : user.id,
+      amount: amount,
       status: SettlementStatus.pendingVerification,
       createdAt: DateTime.now(),
-      transactionId: _txnController.text.isNotEmpty ? _txnController.text : null,
+      transactionId: _txnController.text,
       proofImagePath: _proofImagePath,
-      groupId: _selectedGroupId,
     );
 
-    ref.read(settlementProvider.notifier).initiateSettlement(s);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Settlement request submitted ✓')),
-    );
-    setState(() {
-      _selectedGroupId = null;
-      _settleAmount = null;
-      _proofImagePath = null;
-    });
+    ref.read(settlementActionProvider).createSettlement(s);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settlement request submitted ✓')));
+    setState(() { _selectedFriendId = null; _proofImagePath = null; });
     _amountController.clear();
     _txnController.clear();
+  }
+
+  void _showProofDialog(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                onPressed: () => Navigator.pop(ctx),
+                icon: const Icon(Icons.close_rounded, color: Colors.white, size: 32),
+              ),
+            ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: InteractiveViewer(
+                child: Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatefulWidget {
+  final String label;
+  final Color color;
+  final Future<void> Function() onPressed;
+
+  const _ActionButton({
+    required this.label,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  State<_ActionButton> createState() => _ActionButtonState();
+}
+
+class _ActionButtonState extends State<_ActionButton> {
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return _loading
+        ? SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(widget.color),
+            ),
+          )
+        : TextButton(
+            onPressed: () async {
+              setState(() => _loading = true);
+              try {
+                await widget.onPressed();
+              } finally {
+                if (mounted) setState(() => _loading = false);
+              }
+            },
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              widget.label,
+              style: TextStyle(
+                color: widget.color,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+          );
   }
 }

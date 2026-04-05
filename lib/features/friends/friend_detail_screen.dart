@@ -7,6 +7,7 @@ import '../../core/widgets/shared_widgets.dart';
 import '../auth/auth_provider.dart';
 import '../groups/group_provider.dart';
 import '../settlements/settlement_provider.dart';
+import '../expenses/expense_provider.dart';
 
 class FriendDetailScreen extends ConsumerWidget {
   final String friendUserId;
@@ -19,15 +20,13 @@ class FriendDetailScreen extends ConsumerWidget {
     final balances = ref.watch(friendBalanceProvider);
     final balance = balances[friendUserId] ?? 0.0;
     final settlements = ref.watch(settlementsWithFriendProvider(friendUserId));
-    final allExpenses = ref.watch(groupExpenseProvider);
+    final allExpenses = ref.watch(expenseProvider);
 
-    // Shared expenses with this friend (where either party was payer and other is in split)
+    // Shared expenses with this friend (including personal and group)
     final sharedExpenses = allExpenses.where((e) {
-      final involvesBoth = (e.paidById == user?.id &&
-              e.splitDetails.containsKey(friendUserId)) ||
-          (e.paidById == friendUserId &&
-              e.splitDetails.containsKey(user?.id));
-      return involvesBoth;
+      final involvesFriend = e.participants.contains(friendUserId);
+      final involvesMe = user != null && e.participants.contains(user.id);
+      return involvesFriend && involvesMe;
     }).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
 
@@ -45,6 +44,160 @@ class FriendDetailScreen extends ConsumerWidget {
             ? '$friendName owes you ₹${balance.abs().toStringAsFixed(2)}'
             : 'You owe $friendName ₹${balance.abs().toStringAsFixed(2)}';
 
+    // Interleave and sort all activity
+    final activityItems = <({DateTime date, Widget child})>[];
+    
+    // Add Expenses
+    for (final e in sharedExpenses) {
+      final isPaidByMe = e.paidById == user?.id;
+      final myShare = e.splitDetails[user?.id] ?? 0;
+      final friendShare = e.splitDetails[friendUserId] ?? 0;
+      activityItems.add((
+        date: e.date,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: GestureDetector(
+            onTap: () {
+              if (e.groupId != null) {
+                context.push('/groups/${e.groupId}/expense/${e.id}');
+              } else {
+                context.push('/groups/none/expense/${e.id}');
+              }
+            },
+            child: SpendlyCard(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: SpendlyColors.chartColors[e.category.index % SpendlyColors.chartColors.length].withAlpha(25),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Center(child: Text(e.category.emoji, style: const TextStyle(fontSize: 16))),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(e.description, style: AppTextStyles.bodyPrimary().copyWith(fontWeight: FontWeight.w700)),
+                        Text(
+                          isPaidByMe
+                              ? 'You paid · ${friendName.split(' ').first}\'s share ₹${friendShare.toStringAsFixed(0)}'
+                              : '${friendName.split(' ').first} paid · your share ₹${myShare.toStringAsFixed(0)}',
+                          style: AppTextStyles.caption(color: SpendlyColors.neutral500),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('₹${e.amount.toStringAsFixed(2)}', style: AppTextStyles.bodyPrimary().copyWith(fontWeight: FontWeight.w700)),
+                      Text(AppFormatters.shortDate(e.date), style: AppTextStyles.caption(color: SpendlyColors.neutral400)),
+                    ],
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right_rounded, color: SpendlyColors.neutral400, size: 16),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ));
+    }
+
+    // Add Settlements
+    for (final s in settlements) {
+      final isPaying = s.fromUserId == user?.id;
+      final isReceiving = s.toUserId == user?.id;
+      final needsVerification = s.isPending && isReceiving;
+
+      activityItems.add((
+        date: s.createdAt,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: SpendlyCard(
+            backgroundColor: s.isPending 
+                ? (isReceiving ? SpendlyColors.success.withAlpha(10) : SpendlyColors.warning.withAlpha(10))
+                : SpendlyColors.success.withAlpha(8),
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: (s.isPending && isReceiving) ? SpendlyColors.success.withAlpha(30) : SpendlyColors.success.withAlpha(20),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.handshake_rounded, color: SpendlyColors.success, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isPaying ? 'You paid ${friendName.split(' ').first}' : '${friendName.split(' ').first} paid you',
+                            style: AppTextStyles.bodyPrimary().copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          StatusBadge(
+                            label: s.statusLabel,
+                            color: s.statusColor,
+                            backgroundColor: s.statusColor.withAlpha(30),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      '₹${s.amount.toStringAsFixed(2)}',
+                      style: AppTextStyles.bodyPrimary().copyWith(fontWeight: FontWeight.w800, color: SpendlyColors.success),
+                    ),
+                  ],
+                ),
+                if (needsVerification) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => ref.read(settlementActionProvider).rejectSettlement(s.id, user!.id),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: SpendlyColors.danger,
+                            side: const BorderSide(color: SpendlyColors.danger),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                          child: const Text('Reject'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => ref.read(settlementActionProvider).approveSettlement(s.id, user!.id),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: SpendlyColors.success,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            elevation: 0,
+                          ),
+                          child: const Text('Approve'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ));
+    }
+
+    activityItems.sort((a, b) => b.date.compareTo(a.date));
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -55,7 +208,7 @@ class FriendDetailScreen extends ConsumerWidget {
             actions: [
               IconButton(
                 icon: const Icon(Icons.handshake_outlined, color: Colors.white),
-                onPressed: () => context.go('/settle?userId=$friendUserId'),
+                onPressed: () => context.push('/settle/select?userId=$friendUserId'),
                 tooltip: 'Settle Up',
               ),
             ],
@@ -117,7 +270,7 @@ class FriendDetailScreen extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: GestureDetector(
-                  onTap: () => context.go('/settle?userId=$friendUserId'),
+                  onTap: () => context.push('/settle/select?userId=$friendUserId'),
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
@@ -145,7 +298,7 @@ class FriendDetailScreen extends ConsumerWidget {
             ),
           ),
 
-          if (sharedExpenses.isEmpty && settlements.isEmpty)
+          if (activityItems.isEmpty)
             const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.all(24),
@@ -161,167 +314,8 @@ class FriendDetailScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    // Interleave expenses and settlements, sorted by date
-                    final items = <({DateTime date, Widget child})>[];
-
-                    for (final e in sharedExpenses) {
-                      final isPaidByMe = e.paidById == user?.id;
-                      final myShare = e.splitDetails[user?.id] ?? 0;
-                      final friendShare = e.splitDetails[friendUserId] ?? 0;
-                      items.add((
-                        date: e.date,
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: GestureDetector(
-                            onTap: () => context.push(
-                                '/groups/${e.groupId}/expense/${e.id}'),
-                            child: SpendlyCard(
-                              padding: const EdgeInsets.all(14),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: SpendlyColors
-                                              .chartColors[e.category.index %
-                                                  SpendlyColors.chartColors.length]
-                                          .withAlpha(25),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Center(
-                                      child: Text(e.category.emoji,
-                                          style: const TextStyle(fontSize: 16)),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(e.description,
-                                            style: AppTextStyles.bodyPrimary()
-                                                .copyWith(
-                                                    fontWeight: FontWeight.w700)),
-                                        Text(
-                                          isPaidByMe
-                                              ? 'You paid · ${friendName.split(' ').first}\'s share ₹${friendShare.toStringAsFixed(0)}'
-                                              : '${friendName.split(' ').first} paid · your share ₹${myShare.toStringAsFixed(0)}',
-                                          style: AppTextStyles.caption(
-                                              color: SpendlyColors.neutral500),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        '₹${e.amount.toStringAsFixed(0)}',
-                                        style: AppTextStyles.bodyPrimary()
-                                            .copyWith(fontWeight: FontWeight.w700),
-                                      ),
-                                      Text(
-                                        AppFormatters.shortDate(e.date),
-                                        style: AppTextStyles.caption(
-                                            color: SpendlyColors.neutral400),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.chevron_right_rounded,
-                                      color: SpendlyColors.neutral400, size: 16),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ));
-                    }
-
-                    for (final s in settlements) {
-                      final isPaying = s.fromUserId == user?.id;
-                      items.add((
-                        date: s.createdAt,
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: SpendlyCard(
-                            backgroundColor:
-                                SpendlyColors.success.withAlpha(8),
-                            padding: const EdgeInsets.all(14),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color:
-                                        SpendlyColors.success.withAlpha(20),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(Icons.handshake_rounded,
-                                      color: SpendlyColors.success, size: 20),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        isPaying
-                                            ? 'You paid ${friendName.split(' ').first}'
-                                            : '${friendName.split(' ').first} paid you',
-                                        style: AppTextStyles.bodyPrimary()
-                                            .copyWith(
-                                                fontWeight: FontWeight.w700),
-                                      ),
-                                      Row(
-                                        children: [
-                                          StatusBadge(
-                                            label: s.isVerified
-                                                ? 'Verified'
-                                                : s.isPending
-                                                    ? 'Pending'
-                                                    : 'Rejected',
-                                            color: s.isVerified
-                                                ? SpendlyColors.success
-                                                : s.isPending
-                                                    ? SpendlyColors.warning
-                                                    : SpendlyColors.danger,
-                                            backgroundColor: s.isVerified
-                                                ? const Color(0xFFD1FAE5)
-                                                : s.isPending
-                                                    ? const Color(0xFFFEF3C7)
-                                                    : const Color(0xFFFEE2E2),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Text(
-                                  '₹${s.amount.toStringAsFixed(0)}',
-                                  style: AppTextStyles.bodyPrimary().copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      color: SpendlyColors.success),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ));
-                    }
-
-                    // Sort by date desc
-                    items.sort((a, b) => b.date.compareTo(a.date));
-
-                    if (index >= items.length) return null;
-                    return items[index].child;
-                  },
-                  childCount: sharedExpenses.length + settlements.length,
+                  (context, index) => activityItems[index].child,
+                  childCount: activityItems.length,
                 ),
               ),
             ),

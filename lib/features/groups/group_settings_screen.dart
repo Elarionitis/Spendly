@@ -211,7 +211,7 @@ class GroupSettingsScreen extends ConsumerWidget {
                         activeThumbColor: SpendlyColors.primary,
                         onChanged: (v) {
                           ref
-                              .read(groupProvider.notifier)
+                              .read(groupActionProvider)
                               .updateSmartSplit(groupId, v);
                         },
                       ),
@@ -258,7 +258,7 @@ class GroupSettingsScreen extends ConsumerWidget {
                     selected: {group.defaultSplitType},
                     onSelectionChanged: (s) {
                       ref
-                          .read(groupProvider.notifier)
+                          .read(groupActionProvider)
                           .updateDefaultSplitType(groupId, s.first);
                     },
                   ),
@@ -345,7 +345,7 @@ class GroupSettingsScreen extends ConsumerWidget {
                   title: Text(u.name),
                   subtitle: Text(u.email),
                   onTap: () {
-                    ref.read(groupProvider.notifier).addMember(group.id, u.id);
+                    ref.read(groupActionProvider).addMember(group.id, u.id);
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('${u.name} added!')),
@@ -373,7 +373,7 @@ class GroupSettingsScreen extends ConsumerWidget {
           TextButton(
             onPressed: () {
               if (userId != null) {
-                ref.read(groupProvider.notifier).removeMember(group.id, userId);
+                ref.read(groupActionProvider).removeMember(group.id, userId);
               }
               Navigator.pop(ctx);
               context.go('/groups');
@@ -398,7 +398,7 @@ class GroupSettingsScreen extends ConsumerWidget {
               onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(
             onPressed: () {
-              ref.read(groupProvider.notifier).removeGroup(group.id);
+              ref.read(groupActionProvider).removeGroup(group.id);
               Navigator.pop(ctx);
               context.go('/groups');
             },

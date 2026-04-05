@@ -8,7 +8,8 @@ import '../../core/widgets/shared_widgets.dart';
 import '../auth/auth_provider.dart';
 import '../settlements/settlement_provider.dart';
 import '../groups/group_provider.dart';
-import '../personal_finance/personal_expense_provider.dart';
+import '../expenses/expense_provider.dart';
+import '../../core/models/enums.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -16,14 +17,22 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authProvider);
-    final balance = ref.watch(overallBalanceProvider);
-    final groups = ref.watch(groupProvider);
-    final pendingSettlements = ref.watch(pendingSettlementsProvider);
-    final recentPersonal = ref.watch(personalExpenseProvider);
+    final expensesAsync = ref.watch(expensesStreamProvider);
+    final settlementsAsync = ref.watch(settlementsStreamProvider);
+    final groupsAsync = ref.watch(groupsStreamProvider);
+    final groups = groupsAsync.value ?? [];
 
+    // Inline balance calculation for real-time reactivity if needed, 
+    // or just rely on the existing globalBalancesProvider which watches these.
+    final balance = ref.watch(overallBalanceProvider);
     final owe = balance['owe'] ?? 0.0;
     final owed = balance['owed'] ?? 0.0;
     final net = balance['net'] ?? 0.0;
+
+    final settlements = settlementsAsync.value ?? [];
+    final pendingSettlements = settlements.where((s) => s.isPending && s.toUserId == user?.id).toList();
+    final recentPersonal = (expensesAsync.value ?? []).where((e) => e.type == ExpenseType.personal).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
 
     final greeting = _getGreeting();
 
@@ -505,35 +514,72 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildSettlementAlert(BuildContext context, WidgetRef ref, settlement) {
     final user = ref.read(authProvider);
     final isReceiving = settlement.toUserId == user?.id;
+    final hasApproved = settlement.approvals.contains(user?.id);
+    final hasRejected = settlement.rejections.contains(user?.id);
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 12),
       child: SpendlyCard(
         backgroundColor: isReceiving
             ? SpendlyColors.success.withAlpha(10)
             : SpendlyColors.warning.withAlpha(10),
-        padding: const EdgeInsets.all(14),
-        child: Row(
+        padding: const EdgeInsets.all(16),
+        child: Column(
           children: [
-            Icon(
-              isReceiving
-                  ? Icons.arrow_circle_down_rounded
-                  : Icons.arrow_circle_up_rounded,
-              color: isReceiving ? SpendlyColors.success : SpendlyColors.warning,
-              size: 36,
+            Row(
+              children: [
+                Icon(
+                  isReceiving
+                      ? Icons.arrow_circle_down_rounded
+                      : Icons.arrow_circle_up_rounded,
+                  color: isReceiving ? SpendlyColors.success : SpendlyColors.warning,
+                  size: 36,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isReceiving
+                            ? 'Incoming payment of ${AppFormatters.currency(settlement.amount)}'
+                            : 'You owe ${AppFormatters.currency(settlement.amount)}',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+                StatusBadge.pending(),
+              ],
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                isReceiving
-                    ? 'Incoming payment of ${AppFormatters.currency(settlement.amount)}'
-                    : 'You owe ${AppFormatters.currency(settlement.amount)}',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(fontWeight: FontWeight.w600),
+            if (isReceiving && !hasApproved && !hasRejected) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _DashboardSettlementAction(
+                      label: 'Reject',
+                      isPrimary: false,
+                      onPressed: () => ref.read(settlementActionProvider).rejectSettlement(settlement.id, user!.id),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _DashboardSettlementAction(
+                      label: 'Verify',
+                      isPrimary: true,
+                      onPressed: () => ref.read(settlementActionProvider).approveSettlement(settlement.id, user!.id),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            StatusBadge.pending(),
+            ] else if (isReceiving && hasApproved) ...[
+              const SizedBox(height: 8),
+              const Text('✓ You have verified this payment', style: TextStyle(color: SpendlyColors.success, fontSize: 12, fontWeight: FontWeight.w600)),
+            ],
           ],
         ),
       ),
@@ -588,5 +634,68 @@ class DashboardScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+class _DashboardSettlementAction extends StatefulWidget {
+  final String label;
+  final bool isPrimary;
+  final Future<void> Function() onPressed;
+
+  const _DashboardSettlementAction({
+    required this.label,
+    required this.isPrimary,
+    required this.onPressed,
+  });
+
+  @override
+  State<_DashboardSettlementAction> createState() => _DashboardSettlementActionState();
+}
+
+class _DashboardSettlementActionState extends State<_DashboardSettlementAction> {
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.isPrimary) {
+      return ElevatedButton(
+        onPressed: _loading ? null : () async {
+          setState(() => _loading = true);
+          try {
+            await widget.onPressed();
+          } finally {
+            if (mounted) setState(() => _loading = false);
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: SpendlyColors.success,
+          foregroundColor: Colors.white,
+          minimumSize: const Size(0, 36),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        child: _loading 
+          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+          : Text(widget.label),
+      );
+    } else {
+      return OutlinedButton(
+        onPressed: _loading ? null : () async {
+          setState(() => _loading = true);
+          try {
+            await widget.onPressed();
+          } finally {
+            if (mounted) setState(() => _loading = false);
+          }
+        },
+        style: OutlinedButton.styleFrom(
+          foregroundColor: SpendlyColors.danger,
+          side: const BorderSide(color: SpendlyColors.danger),
+          minimumSize: const Size(0, 36),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        child: _loading 
+          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: SpendlyColors.danger))
+          : Text(widget.label),
+      );
+    }
   }
 }

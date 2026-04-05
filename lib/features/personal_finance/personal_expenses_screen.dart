@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/shared_widgets.dart';
 import '../../core/models/enums.dart';
+import '../../features/expenses/expense_provider.dart';
 import 'personal_expense_provider.dart';
 
 class PersonalExpensesScreen extends ConsumerStatefulWidget {
@@ -183,26 +184,17 @@ class _PersonalExpensesScreenState
                               color: SpendlyColors.danger),
                         ),
                         onDismissed: (_) {
-                          ref
-                              .read(personalExpenseProvider.notifier)
-                              .deleteExpense(e.id);
+                          ref.read(expenseActionProvider).deleteExpense(e.id);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('${e.description} deleted'),
-                              action: SnackBarAction(
-                                label: 'Undo',
-                                onPressed: () => ref
-                                    .read(personalExpenseProvider.notifier)
-                                    .addExpense(e),
-                              ),
                             ),
                           );
                         },
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: SpendlyCard(
-                            onTap: () => context.go('/personal/add',
-                                extra: {'expenseId': e.id}),
+                            onTap: () => context.push('/groups/none/expense/${e.id}'),
                             padding: const EdgeInsets.all(14),
                             child: Row(
                               children: [
@@ -266,22 +258,24 @@ class _PersonalExpensesScreenState
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
-                                          Icon(Icons.payment_outlined,
-                                              size: 12,
-                                              color: SpendlyColors.neutral500),
-                                          const SizedBox(width: 3),
-                                          Flexible(
-                                            child: Text(
-                                              e.paymentMethod.label,
-                                              style: AppTextStyles.caption(
-                                                  color:
-                                                      SpendlyColors.neutral600),
-                                              overflow: TextOverflow.ellipsis,
+                                          if (e.paymentMethod != null) ...[
+                                            const SizedBox(width: 8),
+                                            Icon(Icons.payment_outlined,
+                                                size: 12,
+                                                color: SpendlyColors.neutral500),
+                                            const SizedBox(width: 3),
+                                            Flexible(
+                                              child: Text(
+                                                e.paymentMethod!.label,
+                                                style: AppTextStyles.caption(
+                                                    color:
+                                                        SpendlyColors.neutral600),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
                                             ),
-                                          ),
+                                          ],
                                           // Receipt icon indicator
-                                          if (e.receiptImagePath != null) ...[
+                                          if (e.imageUrl != null) ...[
                                             const SizedBox(width: 6),
                                             Icon(Icons.receipt_outlined,
                                                 size: 12,
