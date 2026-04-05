@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'enums.dart';
 
 class Settlement {
@@ -13,6 +14,8 @@ class Settlement {
   final String? proofImagePath;
   final String? groupId;
   final String? rejectionReason;
+  final List<String> approvals;
+  final List<String> rejections;
 
   const Settlement({
     required this.id,
@@ -26,17 +29,19 @@ class Settlement {
     this.proofImagePath,
     this.groupId,
     this.rejectionReason,
+    this.approvals = const [],
+    this.rejections = const [],
   });
 
   factory Settlement.fromJson(Map<String, dynamic> json, {String? id}) {
     return Settlement(
-      id: id ?? json['id'] as String,
-      fromUserId: json['fromUserId'] as String? ?? '',
-      toUserId: json['toUserId'] as String? ?? '',
+      id: id ?? json['id'] as String? ?? '',
+      fromUserId: json['fromUser'] as String? ?? json['fromUserId'] as String? ?? '',
+      toUserId: json['toUser'] as String? ?? json['toUserId'] as String? ?? '',
       amount: (json['amount'] as num?)?.toDouble() ?? 0,
       status: SettlementStatus.values.firstWhere(
         (e) => e.name == (json['status'] as String?),
-        orElse: () => SettlementStatus.pendingVerification,
+        orElse: () => SettlementStatus.verified, // Default to verified for global settlements if status missing
       ),
       createdAt: json['createdAt'] is int
           ? DateTime.fromMillisecondsSinceEpoch(json['createdAt'] as int)
@@ -45,21 +50,25 @@ class Settlement {
       proofUrl: json['proofUrl'] as String?,
       groupId: json['groupId'] as String?,
       rejectionReason: json['rejectionReason'] as String?,
+      approvals: List<String>.from(json['approvals'] ?? []),
+      rejections: List<String>.from(json['rejections'] ?? []),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'fromUserId': fromUserId,
-      'toUserId': toUserId,
+      'fromUser': fromUserId,
+      'toUser': toUserId,
       'amount': amount,
-      'status': status.name,
       'createdAt': createdAt.millisecondsSinceEpoch,
+      'type': 'settlement',
+      'status': status.name,
       if (transactionId != null) 'transactionId': transactionId,
       if (proofUrl != null) 'proofUrl': proofUrl,
       if (groupId != null) 'groupId': groupId,
       if (rejectionReason != null) 'rejectionReason': rejectionReason,
+      'approvals': approvals,
+      'rejections': rejections,
     };
   }
 
@@ -75,6 +84,8 @@ class Settlement {
     String? proofImagePath,
     String? groupId,
     String? rejectionReason,
+    List<String>? approvals,
+    List<String>? rejections,
     bool clearProofImage = false,
   }) {
     return Settlement(
@@ -90,12 +101,36 @@ class Settlement {
           clearProofImage ? null : (proofImagePath ?? this.proofImagePath),
       groupId: groupId ?? this.groupId,
       rejectionReason: rejectionReason ?? this.rejectionReason,
+      approvals: approvals ?? this.approvals,
+      rejections: rejections ?? this.rejections,
     );
   }
 
   bool get isPending => status == SettlementStatus.pendingVerification;
   bool get isVerified => status == SettlementStatus.verified;
   bool get isRejected => status == SettlementStatus.rejected;
+
+  String get statusLabel {
+    switch (status) {
+      case SettlementStatus.pendingVerification:
+        return 'Pending Verification';
+      case SettlementStatus.verified:
+        return 'Verified';
+      case SettlementStatus.rejected:
+        return 'Rejected';
+    }
+  }
+
+  Color get statusColor {
+    switch (status) {
+      case SettlementStatus.pendingVerification:
+        return const Color(0xFFF59E0B); // warning
+      case SettlementStatus.verified:
+        return const Color(0xFF10B981); // success
+      case SettlementStatus.rejected:
+        return const Color(0xFFEF4444); // danger
+    }
+  }
 
   @override
   bool operator ==(Object other) =>

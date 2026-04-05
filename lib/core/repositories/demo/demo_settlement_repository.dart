@@ -39,48 +39,51 @@ class DemoSettlementRepository implements SettlementRepository {
   void _emit() => _controller.add(List.unmodifiable(_settlements));
 
   @override
-  Stream<List<Settlement>> watchSettlements(String groupId) {
-    final filtered =
-        _settlements.where((s) => s.groupId == groupId).toList();
+  Stream<List<Settlement>> watchUserSettlements(String userId) {
+    final filtered = _settlements
+        .where((s) => s.fromUserId == userId || s.toUserId == userId)
+        .toList();
     return Stream.value(filtered).mergeWith([
       _controller.stream.map((all) => all
-          .where((s) => s.groupId == groupId)
+          .where((s) => s.fromUserId == userId || s.toUserId == userId)
           .toList()),
     ]);
   }
 
   @override
-  Future<List<Settlement>> getSettlements(String groupId) async =>
-      _settlements
-          .where((s) => s.groupId == groupId)
-          .toList();
+  Future<List<Settlement>> getUserSettlements(String userId) async => _settlements
+      .where((s) => s.fromUserId == userId || s.toUserId == userId)
+      .toList();
 
   @override
-  Future<void> addSettlement(Settlement settlement) async {
-    _settlements.insert(0, settlement);
-    _emit();
+  Future<void> addSettlement(Settlement settlement, {dynamic imageFile}) async {
+    _settlements.add(settlement);
+    _controller.add(List.unmodifiable(_settlements));
   }
 
   @override
   Future<void> updateStatus(
-    String groupId,
     String id,
     SettlementStatus status, {
     String? rejectionReason,
+    List<String>? approvals,
+    List<String>? rejections,
   }) async {
-    final idx = _settlements.indexWhere((s) => s.id == id && s.groupId == groupId);
+    final idx = _settlements.indexWhere((s) => s.id == id);
     if (idx >= 0) {
       _settlements[idx] = _settlements[idx].copyWith(
         status: status,
         rejectionReason: rejectionReason,
+        approvals: approvals,
+        rejections: rejections,
       );
       _emit();
     }
   }
 
   @override
-  Future<void> updateTransactionId(String groupId, String id, String transactionId) async {
-    final idx = _settlements.indexWhere((s) => s.id == id && s.groupId == groupId);
+  Future<void> updateTransactionId(String id, String transactionId) async {
+    final idx = _settlements.indexWhere((s) => s.id == id);
     if (idx >= 0) {
       _settlements[idx] = _settlements[idx].copyWith(transactionId: transactionId);
       _emit();

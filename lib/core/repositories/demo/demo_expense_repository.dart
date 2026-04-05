@@ -1,12 +1,12 @@
 import 'dart:async';
-import '../../models/group_expense.dart';
+import '../../models/expense.dart';
 import '../../models/enums.dart';
 import '../expense_repository.dart';
 
 /// In-memory expense repository seeded with demo expenses.
 class DemoExpenseRepository implements ExpenseRepository {
-  final List<GroupExpense> _expenses = [];
-  final _controller = StreamController<List<GroupExpense>>.broadcast();
+  final List<Expense> _expenses = [];
+  final _controller = StreamController<List<Expense>>.broadcast();
 
   DemoExpenseRepository() {
     _seedData();
@@ -15,64 +15,48 @@ class DemoExpenseRepository implements ExpenseRepository {
   void _seedData() {
     final now = DateTime.now();
     _expenses.addAll([
-      // Goa Trip
-      GroupExpense(
-        id: 'ge1', groupId: 'g1', description: 'Hotel Booking',
-        amount: 12000, paidById: 'u1',
+      // Goa Trip (Group)
+      Expense(
+        id: 'ge1', type: ExpenseType.group, groupId: 'g1', 
+        participants: ['u1', 'u2', 'u3', 'u4'],
+        description: 'Hotel Booking', amount: 12000, paidById: 'u1',
         splitDetails: {'u1': 3000, 'u2': 3000, 'u3': 3000, 'u4': 3000},
         splitType: SplitType.equal, category: ExpenseCategory.accommodation,
         date: now.subtract(const Duration(days: 28)),
       ),
-      GroupExpense(
-        id: 'ge2', groupId: 'g1', description: 'Flight Tickets',
-        amount: 24000, paidById: 'u2',
+      Expense(
+        id: 'ge2', type: ExpenseType.group, groupId: 'g1',
+        participants: ['u1', 'u2', 'u3', 'u4'],
+        description: 'Flight Tickets', amount: 24000, paidById: 'u2',
         splitDetails: {'u1': 6000, 'u2': 6000, 'u3': 6000, 'u4': 6000},
         splitType: SplitType.equal, category: ExpenseCategory.travel,
         date: now.subtract(const Duration(days: 27)),
       ),
-      GroupExpense(
-        id: 'ge3', groupId: 'g1', description: 'Beach Restaurant',
-        amount: 4500, paidById: 'u3',
-        splitDetails: {'u1': 1125, 'u2': 1125, 'u3': 1125, 'u4': 1125},
+      // Personal / Non-Group
+      Expense(
+        id: 'pe1', type: ExpenseType.personal, 
+        participants: ['u1', 'u2'],
+        description: 'Movie Tickets', amount: 800, paidById: 'u1',
+        splitDetails: {'u1': 400, 'u2': 400},
+        splitType: SplitType.equal, category: ExpenseCategory.entertainment,
+        date: now.subtract(const Duration(days: 10)),
+      ),
+      Expense(
+        id: 'pe2', type: ExpenseType.personal,
+        participants: ['u1', 'u3'],
+        description: 'Dinner', amount: 1500, paidById: 'u3',
+        splitDetails: {'u1': 750, 'u3': 750},
         splitType: SplitType.equal, category: ExpenseCategory.food,
-        date: now.subtract(const Duration(days: 25)),
+        date: now.subtract(const Duration(days: 5)),
       ),
-      GroupExpense(
-        id: 'ge4', groupId: 'g1', description: 'Water Sports',
-        amount: 3000, paidById: 'u1',
-        splitDetails: {'u1': 750, 'u2': 1500, 'u4': 750},
-        splitType: SplitType.exact, category: ExpenseCategory.entertainment,
-        date: now.subtract(const Duration(days: 24)),
-      ),
-      // Apartment
-      GroupExpense(
-        id: 'ge5', groupId: 'g2', description: 'Monthly Rent',
-        amount: 45000, paidById: 'u1',
+      // Apartment (Group)
+      Expense(
+        id: 'ge5', type: ExpenseType.group, groupId: 'g2',
+        participants: ['u1', 'u2', 'u3'],
+        description: 'Monthly Rent', amount: 45000, paidById: 'u1',
         splitDetails: {'u1': 15000, 'u2': 15000, 'u3': 15000},
         splitType: SplitType.equal, category: ExpenseCategory.accommodation,
         date: now.subtract(const Duration(days: 5)),
-      ),
-      GroupExpense(
-        id: 'ge6', groupId: 'g2', description: 'Electricity Bill',
-        amount: 3600, paidById: 'u2',
-        splitDetails: {'u1': 1200, 'u2': 1200, 'u3': 1200},
-        splitType: SplitType.equal, category: ExpenseCategory.utilities,
-        date: now.subtract(const Duration(days: 3)),
-      ),
-      // Office Lunch
-      GroupExpense(
-        id: 'ge7', groupId: 'g3', description: 'Pizza Party',
-        amount: 1800, paidById: 'u2',
-        splitDetails: {'u1': 600, 'u2': 600, 'u4': 600},
-        splitType: SplitType.equal, category: ExpenseCategory.food,
-        date: now.subtract(const Duration(days: 2)),
-      ),
-      GroupExpense(
-        id: 'ge8', groupId: 'g3', description: 'Coffee & Snacks',
-        amount: 450, paidById: 'u1',
-        splitDetails: {'u1': 150, 'u2': 150, 'u4': 150},
-        splitType: SplitType.equal, category: ExpenseCategory.food,
-        date: now.subtract(const Duration(days: 1)),
       ),
     ]);
   }
@@ -80,26 +64,29 @@ class DemoExpenseRepository implements ExpenseRepository {
   void _emit() => _controller.add(List.unmodifiable(_expenses));
 
   @override
-  Stream<List<GroupExpense>> watchExpenses(String groupId) {
-    final filtered = _expenses.where((e) => e.groupId == groupId).toList()
+  Stream<List<Expense>> watchUserExpenses(String userId) {
+    final filtered = _expenses.where((e) => e.participants.contains(userId)).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
-    return Stream.value(filtered).mergeWith([
-      _controller.stream.map((all) => all
-          .where((e) => e.groupId == groupId)
-          .toList()
-        ..sort((a, b) => b.date.compareTo(a.date))),
-    ]);
+    
+    // In a real app we'd combine with the stream for updates
+    return Stream.value(filtered); 
   }
 
-  /// [imageFile] is ignored in demo mode — no Cloudinary upload.
   @override
-  Future<void> addExpense(GroupExpense expense, {dynamic imageFile}) async {
+  Stream<List<Expense>> watchGroupExpenses(String groupId) {
+    final filtered = _expenses.where((e) => e.groupId == groupId).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+    return Stream.value(filtered);
+  }
+
+  @override
+  Future<void> addExpense(Expense expense, {dynamic imageFile}) async {
     _expenses.insert(0, expense);
     _emit();
   }
 
   @override
-  Future<void> updateExpense(GroupExpense expense) async {
+  Future<void> updateExpense(Expense expense) async {
     final idx = _expenses.indexWhere((e) => e.id == expense.id);
     if (idx >= 0) {
       _expenses[idx] = expense;
@@ -108,19 +95,24 @@ class DemoExpenseRepository implements ExpenseRepository {
   }
 
   @override
-  Future<void> deleteExpense(String groupId, String id) async {
+  Future<void> updateApprovalStatus(
+    String id, {
+    List<String>? approvals,
+    List<String>? rejections,
+  }) async {
+    final idx = _expenses.indexWhere((e) => e.id == id);
+    if (idx >= 0) {
+      _expenses[idx] = _expenses[idx].copyWith(
+        approvals: approvals,
+        rejections: rejections,
+      );
+      _emit();
+    }
+  }
+
+  @override
+  Future<void> deleteExpense(String id) async {
     _expenses.removeWhere((e) => e.id == id);
     _emit();
-  }
-}
-
-extension _StreamMerge<T> on Stream<T> {
-  Stream<T> mergeWith(List<Stream<T>> others) {
-    final controller = StreamController<T>.broadcast();
-    listen(controller.add, onError: controller.addError);
-    for (final s in others) {
-      s.listen(controller.add, onError: controller.addError);
-    }
-    return controller.stream;
   }
 }

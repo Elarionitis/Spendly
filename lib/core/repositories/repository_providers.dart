@@ -22,10 +22,6 @@ import 'firebase/firebase_expense_repository.dart';
 import 'firebase/firebase_comment_repository.dart';
 import 'firebase/firebase_settlement_repository.dart';
 
-import 'personal_expense_repository.dart';
-import 'demo/demo_personal_expense_repository.dart';
-import 'firebase/firebase_personal_expense_repository.dart';
-
 // ─── User ────────────────────────────────────────────────────────────────────
 
 final userRepositoryProvider = Provider<UserRepository>((ref) {
@@ -48,18 +44,11 @@ final groupRepositoryProvider = Provider<GroupRepository>((ref) {
   return FirebaseGroupRepository();
 });
 
-// ─── Expenses (Group) ────────────────────────────────────────────────────────
+// ─── Expenses (Unified) ──────────────────────────────────────────────────────
 
 final expenseRepositoryProvider = Provider<ExpenseRepository>((ref) {
   if (useDemoMode) return DemoExpenseRepository();
   return FirebaseExpenseRepository();
-});
-
-// ─── Expenses (Personal) ─────────────────────────────────────────────────────
-
-final personalExpenseRepositoryProvider = Provider<PersonalExpenseRepository>((ref) {
-  if (useDemoMode) return DemoPersonalExpenseRepository();
-  return FirebasePersonalExpenseRepository();
 });
 
 // ─── Comments ────────────────────────────────────────────────────────────────

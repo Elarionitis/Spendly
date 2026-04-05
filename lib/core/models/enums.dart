@@ -1,5 +1,6 @@
 // Core enums used across the application
 enum SplitType { equal, exact, percentage }
+enum ExpenseType { group, personal }
 
 enum SettlementStatus { pendingVerification, verified, rejected }
 
