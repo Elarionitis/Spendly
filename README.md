@@ -150,18 +150,18 @@ context.pushNamed(AppRoute.expenseDetails.name, pathParameters: {'id': '123'});
 
 ### Running Tests
 Ensure code quality by running the test suite:
-```bash
+bash
 flutter test
-```
+
 
 ### Code Style
 This project adheres to `flutter_lints`. To check for linting issues:
-```bash
+bash
 flutter analyze
-```
 
----
 
+### Build Configuration
+When updating platform-specific settings, ensure that the build scripts (e.g., `android/app/build.gradle.kts`) are correctly configured for the target environment and dependencies.
 ## 🚀 Deployment
 
 ### Android
