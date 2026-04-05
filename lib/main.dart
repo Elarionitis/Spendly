@@ -15,6 +15,15 @@ void main() async {
   runApp(const ProviderScope(child: SpendlyApp()));
 }
 
+// void main() {
+//   WidgetsFlutterBinding.ensureInitialized();
+//   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+//     statusBarColor: Colors.transparent,
+//     statusBarIconBrightness: Brightness.dark,
+//   ));
+//   runApp(const ProviderScope(child: SpendlyApp()));
+// }
+
 class SpendlyApp extends ConsumerWidget {
   const SpendlyApp({super.key});
 

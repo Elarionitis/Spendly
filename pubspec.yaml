@@ -47,7 +47,7 @@ dependencies:
 
   # Local storage
   shared_preferences: ^2.5.4
-  
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

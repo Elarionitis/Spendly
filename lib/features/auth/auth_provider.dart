@@ -10,6 +10,8 @@ final authProvider = StateNotifierProvider<AuthNotifier, AppUser?>((ref) {
   return AuthNotifier(ref.watch(authRepositoryProvider), ref);
 });
 
+// ─── Auth Notifier ───────────────────────────────────────────────────────────
+
 class AuthNotifier extends StateNotifier<AppUser?> {
   final AuthRepository _repo;
   final Ref _ref;
