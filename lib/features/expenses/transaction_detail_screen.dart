@@ -5,13 +5,11 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/shared_widgets.dart';
 import '../../core/models/expense.dart';
-import '../../core/models/enums.dart';
 import '../auth/auth_provider.dart';
 import '../groups/group_provider.dart';
 import '../comments/comment_sheet.dart';
 import '../comments/comment_provider.dart';
 import 'expense_provider.dart';
-import '../auth/auth_provider.dart';
 
 /// Full-detail view for a single expense.
 /// Route: /groups/:id/expense/:expenseId or similar
@@ -54,7 +52,6 @@ class TransactionDetailScreen extends ConsumerWidget {
     final paidByName = userName(expense.paidById);
     final isPaidByMe = expense.paidById == currentUser?.id;
     final myShare = expense.splitDetails[currentUser?.id] ?? 0.0;
-    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(

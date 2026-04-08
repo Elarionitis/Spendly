@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 import '../../core/models/expense.dart';
 import '../../core/models/enums.dart';
-import '../../core/models/group.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
 import '../auth/auth_provider.dart';
@@ -57,6 +56,15 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Handle pre-selected friend from navigation extra
+      final extra = GoRouterState.of(context).extra as Map<String, dynamic>?;
+      final preselectedFriendId = extra?['friendId'] as String?;
+      if (preselectedFriendId != null) {
+        setState(() {
+          _selectedFriendIds.add(preselectedFriendId);
+          _expenseType = ExpenseType.personal;
+        });
+      }
       if (_isEdit) {
         final expense = ref.read(expenseProvider).firstWhere(
           (e) => e.id == widget.expenseId,
@@ -188,6 +196,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                Text('Select Group', style: AppTextStyles.sectionLabel()),
                const SizedBox(height: 10),
                DropdownButtonFormField<String>(
+                 initialValue: _selectedGroupId,
                  value: _selectedGroupId,
                  items: groups.map((g) => DropdownMenuItem(value: g.id, child: Text(g.name))).toList(),
                  onChanged: (val) => setState(() {
@@ -200,41 +209,52 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 100,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: friends.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, i) {
-                      final f = friends[i];
-                      final isSelected = _selectedFriendIds.contains(f.id);
-                      return GestureDetector(
-                        onTap: () => setState(() {
-                          if (isSelected) _selectedFriendIds.remove(f.id);
-                          else _selectedFriendIds.add(f.id);
-                        }),
-                        child: Column(
-                          children: [
-                            Stack(
-                              children: [
-                                UserAvatar(name: f.name, userId: f.id, size: 56),
-                                if (isSelected)
-                                  Positioned(
-                                    right: 0, bottom: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: const BoxDecoration(color: SpendlyColors.primary, shape: BoxShape.circle),
-                                      child: const Icon(Icons.check, color: Colors.white, size: 14),
-                                    ),
+                  child: friends.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No friends yet. Join a group to add friends!',
+                            style: AppTextStyles.caption(color: SpendlyColors.neutral500),
+                            textAlign: TextAlign.center,
+                          ),
+                        )
+                      : ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: friends.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          itemBuilder: (context, i) {
+                            final f = friends[i];
+                            final isSelected = _selectedFriendIds.contains(f.id);
+                            return GestureDetector(
+                              onTap: () => setState(() {
+                                if (isSelected) {
+                                  _selectedFriendIds.remove(f.id);
+                                } else {
+                                  _selectedFriendIds.add(f.id);
+                                }
+                              }),
+                              child: Column(
+                                children: [
+                                  Stack(
+                                    children: [
+                                      UserAvatar(name: f.name, userId: f.id, size: 56),
+                                      if (isSelected)
+                                        Positioned(
+                                          right: 0, bottom: 0,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(2),
+                                            decoration: const BoxDecoration(color: SpendlyColors.primary, shape: BoxShape.circle),
+                                            child: const Icon(Icons.check, color: Colors.white, size: 14),
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(f.name.split(' ').first, style: AppTextStyles.caption(color: isSelected ? SpendlyColors.primary : null).copyWith(fontWeight: isSelected ? FontWeight.w700 : null)),
-                          ],
+                                  const SizedBox(height: 6),
+                                  Text(f.name.split(' ').first, style: AppTextStyles.caption(color: isSelected ? SpendlyColors.primary : null).copyWith(fontWeight: isSelected ? FontWeight.w700 : null)),
+                                ],
+                              ),
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
                 ),
              ],
             const Divider(height: 40),
@@ -253,6 +273,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               Text('Paid by', style: AppTextStyles.sectionLabel()),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
+                initialValue: _paidById ?? currentUser?.id,
                 value: _paidById ?? currentUser?.id,
                 items: _currentParticipants.map((id) {
                   final u = ref.read(userByIdProvider(id));
@@ -441,7 +462,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
       if (_splitType == SplitType.equal) {
         final share = amount / participants.length;
-        for (final p in participants) splitDetails[p] = share;
+        for (final p in participants) {
+          splitDetails[p] = share;
+        }
       } else {
         double totalSplit = 0;
         for (final p in participants) {
