@@ -50,11 +50,11 @@ final activityProvider = Provider<List<ActivityEvent>>((ref) {
 
     String amountNote;
     if (isCurrentUserPayer) {
-      amountNote = othersOwe > 0 ? 'you get back ₹${othersOwe.toStringAsFixed(0)}' : '';
+      amountNote = othersOwe > 0 ? 'You are owed ₹${othersOwe.toStringAsFixed(0)}' : 'You paid for this';
     } else if (myShare > 0) {
-      amountNote = 'you owe ₹${myShare.toStringAsFixed(0)}';
+      amountNote = 'Your share: ₹${myShare.toStringAsFixed(0)}';
     } else {
-      amountNote = '';
+      amountNote = 'You are not involved';
     }
 
     events.add(ActivityEvent(
@@ -63,7 +63,7 @@ final activityProvider = Provider<List<ActivityEvent>>((ref) {
       type: ActivityType.expenseAdded,
       description:
           '$payer added "${e.description}"${grpName.isNotEmpty ? ' in "$grpName"' : ''}.'
-          '${amountNote.isNotEmpty ? '\n$amountNote' : ''}',
+          '\n$amountNote',
       timestamp: e.date,
       metadata: {
         'amount': e.amount,
@@ -92,7 +92,14 @@ final activityProvider = Provider<List<ActivityEvent>>((ref) {
     } else {
       desc = '$from paid $to ₹${s.amount.toStringAsFixed(0)}.';
     }
-    if (!s.isVerified) desc += ' (${s.isPending ? "pending" : "rejected"})';
+    
+    if (s.isPending) {
+      desc += ' [Pending Verification]';
+    } else if (s.isRejected) {
+      desc += ' [Rejected]';
+    } else {
+      desc += ' [Settled]';
+    }
 
     events.add(ActivityEvent(
       id: 'ae_st_${s.id}',

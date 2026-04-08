@@ -6,6 +6,7 @@ import '../../core/models/activity_event.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
 import '../auth/auth_provider.dart';
+import '../expenses/expense_provider.dart';
 import 'activity_provider.dart';
 
 String _timeAgo(DateTime dt) {
@@ -37,24 +38,41 @@ class ActivityScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: events.isEmpty
-          ? const EmptyState(
-              icon: Icons.history_rounded,
-              title: 'No activity yet',
-              subtitle: 'Add expenses or settle up to see activity here',
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(0, 8, 0, 100),
-              itemCount: events.length,
-              itemBuilder: (context, i) {
-                final event = events[i];
-                return _ActivityTile(
-                  event: event,
-                  users: users,
-                  onTap: () => _handleTap(context, event),
-                ).animate().fadeIn(delay: (i * 40).ms);
-              },
-            ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(activityProvider);
+          ref.invalidate(expensesStreamProvider);
+          ref.invalidate(usersStreamProvider);
+          await Future.delayed(const Duration(milliseconds: 500));
+        },
+        child: events.isEmpty
+            ? Center(
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: EmptyState(
+                      icon: Icons.history_rounded,
+                      title: 'No activity yet',
+                      subtitle: 'Add expenses or settle up to see activity here',
+                    ),
+                  ),
+                ),
+              )
+            : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(0, 8, 0, 100),
+                itemCount: events.length,
+                itemBuilder: (context, i) {
+                  final event = events[i];
+                  return _ActivityTile(
+                    event: event,
+                    users: users,
+                    onTap: () => _handleTap(context, event),
+                  ).animate().fadeIn(delay: (i * 40).ms);
+                },
+              ),
+      ),
     );
   }
 
@@ -124,13 +142,13 @@ class _ActivityTile extends StatelessWidget {
     final subText = parts.length > 1 ? parts[1] : null;
 
     final accentColor = _accentColor;
-    final isOwed = subText?.startsWith('you get back') == true;
-    final isOwe = subText?.startsWith('you owe') == true;
+    final isOwed = subText?.contains('owed') == true;
+    final isOwe = subText?.contains('share') == true;
     final subColor = isOwed
         ? SpendlyColors.success
         : isOwe
             ? SpendlyColors.danger
-            : SpendlyColors.neutral500;
+            : Theme.of(context).colorScheme.onSurfaceVariant;
 
     return InkWell(
       onTap: _isTappable ? onTap : null,
