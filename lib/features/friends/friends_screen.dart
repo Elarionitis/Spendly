@@ -4,7 +4,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/shared_widgets.dart';
+import '../auth/auth_provider.dart';
 import '../groups/group_provider.dart';
+import '../expenses/expense_provider.dart';
 import '../../features/settlements/settlement_provider.dart'; // Keep if used for globalBalancesProvider
 
 class FriendsScreen extends ConsumerWidget {
@@ -65,44 +67,67 @@ class FriendsScreen extends ConsumerWidget {
 
           // ── Friend list ────────────────────────────────────────────────
           Expanded(
-            child: friends.isEmpty
-                ? const EmptyState(
-                    icon: Icons.people_outline,
-                    title: 'No friends yet',
-                    subtitle:
-                        'Join a group to see friends and balances here',
-                  )
-                : ListView.separated(
-                    itemCount: friends.length,
-                    separatorBuilder: (_, __) =>
-                        const Divider(height: 1, indent: 72),
-                    itemBuilder: (context, i) {
-                      final friend = friends[i];
-                      final balance = balances[friend.id] ?? 0.0;
-                      return _FriendTile(
-                        userId: friend.id,
-                        name: friend.name,
-                        avatarUrl: friend.avatarUrl,
-                        isVerified: friend.isVerified,
-                        balance: balance,
-                        onTap: () => context.go('/friends/${friend.id}'),
-                        onSettle: () =>
-                            context.push('/settle/select?userId=${friend.id}'),
-                        onRemind: balance > 0
-                            ? () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Reminder sent to ${friend.name.split(' ').first}!'),
-                                    backgroundColor: SpendlyColors.primary,
-                                  ),
-                                );
-                              }
-                            : null,
-                      ).animate().fadeIn(delay: (i * 60).ms);
-                    },
-                  ),
+            child: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(usersStreamProvider);
+                ref.invalidate(expensesStreamProvider);
+                ref.invalidate(settlementsStreamProvider);
+                await Future.delayed(const Duration(milliseconds: 500));
+              },
+              child: friends.isEmpty
+                  ? Center(
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Padding(
+                          padding: const EdgeInsets.all(32),
+                          child: EmptyState(
+                            icon: Icons.people_outline,
+                            title: 'No friends yet',
+                            subtitle:
+                                'Join a group to see friends and balances here',
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: friends.length,
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1, indent: 72),
+                      itemBuilder: (context, i) {
+                        final friend = friends[i];
+                        final balance = balances[friend.id] ?? 0.0;
+                        return _FriendTile(
+                          userId: friend.id,
+                          name: friend.name,
+                          avatarUrl: friend.avatarUrl,
+                          isVerified: friend.isVerified,
+                          balance: balance,
+                          onTap: () => context.go('/friends/${friend.id}'),
+                          onSettle: () => context
+                              .push('/settle/select?userId=${friend.id}'),
+                          onRemind: balance > 0
+                              ? () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Reminder sent to ${friend.name.split(' ').first}!'),
+                                      backgroundColor: SpendlyColors.primary,
+                                    ),
+                                  );
+                                }
+                              : null,
+                        ).animate().fadeIn(delay: (i * 60).ms);
+                      },
+                    ),
+            ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/expenses/add'),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Expense'),
       ),
     );
   }

@@ -5,7 +5,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/shared_widgets.dart';
 import '../auth/auth_provider.dart';
-import '../groups/group_provider.dart';
 import '../settlements/settlement_provider.dart';
 import '../expenses/expense_provider.dart';
 
@@ -321,6 +320,11 @@ class FriendDetailScreen extends ConsumerWidget {
             ),
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/expenses/add', extra: {'friendId': friendUserId}),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Expense'),
       ),
     );
   }
