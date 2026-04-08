@@ -31,7 +31,14 @@ class GroupDetailScreen extends ConsumerWidget {
     final user = ref.watch(authProvider);
 
     return Scaffold(
-      body: CustomScrollView(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(expensesStreamProvider);
+          ref.invalidate(settlementsStreamProvider);
+          ref.invalidate(groupsStreamProvider);
+          await Future.delayed(const Duration(milliseconds: 500));
+        },
+        child: CustomScrollView(
         slivers: [
           // Header
           SliverAppBar(
@@ -439,7 +446,8 @@ class GroupDetailScreen extends ConsumerWidget {
             ),
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
         ],
-      ),
+        ),   // CustomScrollView
+      ),     // RefreshIndicator
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/groups/$groupId/add-expense'),
         icon: const Icon(Icons.add_rounded),

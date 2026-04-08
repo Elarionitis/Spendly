@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/group.dart';
 import '../../core/models/expense.dart';
 import '../../core/repositories/repository_providers.dart';
-import '../../core/repositories/group_repository.dart';
 import '../../core/models/enums.dart';
 import '../../core/models/app_user.dart';
 import '../auth/auth_provider.dart';
@@ -122,8 +121,8 @@ final groupNetBalanceProvider =
 // ─── Friends (Shared Group Visibility) ────────────────────────────────────────
 
 final friendsProvider = Provider<List<AppUser>>((ref) {
-  final usersResult = ref.watch(allUsersProvider);
-  final allUsers = usersResult.value ?? [];
+  // Use usersStreamProvider directly so this provider re-fires on every Firestore snapshot.
+  final allUsers = ref.watch(usersStreamProvider).value ?? [];
   final groups = ref.watch(groupProvider);
   final currentUser = ref.watch(authProvider);
 

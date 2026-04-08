@@ -187,8 +187,7 @@ class _AddGroupScreenState extends ConsumerState<AddGroupScreen> {
       emoji: _selectedEmoji,
     );
     await ref.read(groupActionProvider).addGroup(group);
-    if (context.mounted) {
-      context.go('/groups/${group.id}');
-    }
+    if (!mounted) return;
+    context.go('/groups/${group.id}');
   }
 }
