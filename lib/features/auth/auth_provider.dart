@@ -40,9 +40,14 @@ class AuthNotifier extends StateNotifier<AppUser?> {
 
 // ─── User lookup providers ─────────────────────────────────────────────────────
 
-/// Provides the list of all users (used in group settings, split screens, etc.)
-final allUsersProvider = FutureProvider<List<AppUser>>((ref) async {
-  return ref.watch(userRepositoryProvider).getUsers();
+/// Real-time stream of all users.
+final usersStreamProvider = StreamProvider<List<AppUser>>((ref) {
+  return ref.watch(userRepositoryProvider).watchUsers();
+});
+
+/// Provides the list of all users (synced reactively).
+final allUsersProvider = Provider<AsyncValue<List<AppUser>>>((ref) {
+  return ref.watch(usersStreamProvider);
 });
 
 /// Convenience: look up a single user by ID.
@@ -50,8 +55,8 @@ final allUsersProvider = FutureProvider<List<AppUser>>((ref) async {
 /// Reads from the in-memory allUsersProvider cache (works in demo mode).
 /// Returns null if the user hasn't been loaded yet.
 final userByIdProvider = Provider.family<AppUser?, String>((ref, id) {
-  final usersAsync = ref.watch(allUsersProvider);
-  final users = usersAsync.value ?? [];
+  final usersResult = ref.watch(usersStreamProvider);
+  final users = usersResult.value ?? [];
   try {
     return users.firstWhere((u) => u.id == id);
   } catch (_) {
