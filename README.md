@@ -109,7 +109,7 @@ lib/
     *   Add Android/iOS apps to your Firebase project.
     *   Download `google-services.json` (Android) and `GoogleService-Info.plist` (iOS).
     *   Place them in `android/app/` and `ios/Runner/` respectively.
-    *   Alternatively, use the FlutterFire CLI:
+    *   Alternatively, use the FlutterFire CLI to initialize the configuration:
         bash
         flutterfire configure
         
