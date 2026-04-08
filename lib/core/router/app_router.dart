@@ -169,6 +169,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
 
           GoRoute(
+            path: '/expenses/add',
+            name: 'add-expense',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>?;
+              final expenseId = extra?['expenseId'] as String?;
+              final groupId = extra?['groupId'] as String?;
+              return AddExpenseScreen(
+                groupId: groupId,
+                expenseId: expenseId,
+              );
+            },
+          ),
+          GoRoute(
             path: '/personal',
             name: 'personal',
             builder: (context, state) => const PersonalExpensesScreen(),

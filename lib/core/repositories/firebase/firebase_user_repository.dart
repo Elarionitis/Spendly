@@ -9,6 +9,21 @@ class FirebaseUserRepository implements UserRepository {
   CollectionReference<Map<String, dynamic>> get _col => _db.collection('users');
 
   @override
+  Stream<List<AppUser>> watchUsers() {
+    return _col.snapshots().map((snap) => snap.docs
+        .map((doc) => AppUser.fromJson(doc.data(), id: doc.id))
+        .toList());
+  }
+
+  @override
+  Stream<AppUser?> watchUser(String id) {
+    return _col.doc(id).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return AppUser.fromJson(doc.data()!, id: doc.id);
+    });
+  }
+
+  @override
   Future<List<AppUser>> getUsers() async {
     final snap = await _col.get();
     return snap.docs

@@ -31,7 +31,8 @@ class SpendlyButton extends StatelessWidget {
     final button = ElevatedButton(
       onPressed: isLoading ? null : onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: color ?? SpendlyColors.primary,
+        backgroundColor: color ?? Theme.of(context).colorScheme.primary,
+        foregroundColor: color != null ? Colors.white : Theme.of(context).colorScheme.onPrimary,
         minimumSize: Size(isFullWidth ? double.infinity : 0, 52),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
@@ -92,7 +93,7 @@ class SpendlyTextField extends StatelessWidget {
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: SpendlyColors.neutral600,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
         ),
         const SizedBox(height: 8),
@@ -142,7 +143,7 @@ class SpendlyCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(borderRadius ?? 16),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.04),
+          color: Theme.of(context).shadowColor.withOpacity(0.04),
           blurRadius: 10,
           offset: const Offset(0, 4),
         ),
@@ -252,7 +253,7 @@ class UserAvatar extends StatelessWidget {
               ),
               child: Icon(
                 Icons.check_circle,
-                color: SpendlyColors.primary,
+                color: Theme.of(context).colorScheme.primary,
                 size: size * 0.35,
               ),
             ),
@@ -371,7 +372,7 @@ class StatCard extends StatelessWidget {
               subtitle!,
               style: TextStyle(
                 fontSize: 10,
-                color: gradient != null ? Colors.white60 : SpendlyColors.neutral400,
+                color: gradient != null ? Colors.white60 : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -414,10 +415,10 @@ class SectionHeader extends StatelessWidget {
               onPressed: onAction,
               child: Text(
                 actionLabel!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: SpendlyColors.primary,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),
@@ -456,10 +457,10 @@ class EmptyState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: SpendlyColors.neutral100,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 48, color: SpendlyColors.neutral400),
+              child: Icon(icon, size: 48, color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 24),
             Text(
@@ -471,7 +472,7 @@ class EmptyState extends StatelessWidget {
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: SpendlyColors.neutral500,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
               textAlign: TextAlign.center,
             ),
@@ -529,10 +530,10 @@ class SpendlyCategoryChipGrid<T> extends StatelessWidget {
           onTap: () => onSelect(item),
           child: Container(
             decoration: BoxDecoration(
-              color: isSelected ? SpendlyColors.primary : Colors.white,
+              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isSelected ? SpendlyColors.primary : SpendlyColors.neutral200,
+                color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline,
               ),
             ),
             child: Column(
@@ -548,7 +549,7 @@ class SpendlyCategoryChipGrid<T> extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
-                    color: isSelected ? Colors.white : SpendlyColors.neutral600,
+                    color: isSelected ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 1,

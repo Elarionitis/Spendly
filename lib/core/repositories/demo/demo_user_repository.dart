@@ -11,6 +11,12 @@ class DemoUserRepository implements UserRepository {
   ];
 
   @override
+  Stream<List<AppUser>> watchUsers() => Stream.value(List.unmodifiable(_users));
+
+  @override
+  Stream<AppUser?> watchUser(String id) => Stream.value(_users.where((u) => u.id == id).firstOrNull);
+
+  @override
   Future<List<AppUser>> getUsers() async => List.unmodifiable(_users);
 
   @override

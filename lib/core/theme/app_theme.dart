@@ -76,41 +76,41 @@ class AppTextStyles {
         fontSize: 28,
         fontWeight: FontWeight.w800,
         letterSpacing: -1.0,
-        color: color ?? SpendlyColors.neutral900,
+        color: color,
       );
 
   static TextStyle heading2({Color? color}) => GoogleFonts.inter(
         fontSize: 20,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
-        color: color ?? SpendlyColors.neutral900,
+        color: color,
       );
 
   static TextStyle sectionLabel({Color? color}) => GoogleFonts.inter(
         fontSize: 13,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.1,
-        color: color ?? SpendlyColors.neutral700,
+        color: color,
       );
 
   static TextStyle bodyPrimary({Color? color}) => GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         height: 1.5,
-        color: color ?? SpendlyColors.neutral900,
+        color: color,
       );
 
   static TextStyle bodySecondary({Color? color}) => GoogleFonts.inter(
         fontSize: 13,
         fontWeight: FontWeight.w400,
         height: 1.5,
-        color: color ?? SpendlyColors.neutral600,
+        color: color,
       );
 
   static TextStyle caption({Color? color}) => GoogleFonts.inter(
         fontSize: 11,
         fontWeight: FontWeight.w500,
-        color: color ?? SpendlyColors.neutral500,
+        color: color,
       );
 
   /// Selected chip label (white on primary background)
