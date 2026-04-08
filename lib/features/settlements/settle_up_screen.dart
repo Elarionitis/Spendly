@@ -12,7 +12,6 @@ import '../auth/auth_provider.dart';
 import 'settlement_provider.dart';
 import '../expenses/expense_provider.dart';
 
-const _uuid = Uuid();
 
 /// The redesigned Settle Up screen.
 /// - Select friend to settle with
@@ -503,13 +502,16 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
         groupId: widget.groupId != null && widget.groupId!.isNotEmpty ? widget.groupId : null,
       );
 
+      // Capture messenger before async gap
+      final messenger = ScaffoldMessenger.of(context);
+
       await ref.read(settlementActionProvider).createSettlement(
         settlement,
         imageFile: _proofImagePath != null ? File(_proofImagePath!) : null,
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(
             content: Text('Settlement submitted successfully! ✓'),
             backgroundColor: SpendlyColors.success,

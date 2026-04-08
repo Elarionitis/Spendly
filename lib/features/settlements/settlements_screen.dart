@@ -10,10 +10,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/shared_widgets.dart';
 import '../auth/auth_provider.dart';
-import '../groups/group_provider.dart';
 import 'settlement_provider.dart';
 
-const _uuid = Uuid();
 
 class SettlementsScreen extends ConsumerStatefulWidget {
   const SettlementsScreen({super.key});

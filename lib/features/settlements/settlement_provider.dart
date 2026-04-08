@@ -5,7 +5,6 @@ import '../../core/models/settlement.dart';
 import '../../core/models/enums.dart';
 import '../../core/utils/debt_simplifier.dart';
 import '../../core/repositories/repository_providers.dart';
-import '../../core/repositories/settlement_repository.dart';
 import '../auth/auth_provider.dart';
 import '../groups/group_provider.dart';
 import '../expenses/expense_provider.dart';
@@ -176,8 +175,11 @@ final overallBalanceProvider = Provider<Map<String, double>>((ref) {
   double owed = 0.0;
 
   for (final amount in balancesByFriend.values) {
-    if (amount > 0) owed += amount;
-    else if (amount < 0) owe += amount.abs();
+    if (amount > 0) {
+      owed += amount;
+    } else if (amount < 0) {
+      owe += amount.abs();
+    }
   }
 
   return {'owe': owe, 'owed': owed, 'net': owed - owe};
