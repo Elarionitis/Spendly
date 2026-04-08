@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/providers/theme_provider.dart';
 import '../../core/widgets/shared_widgets.dart';
 import '../auth/auth_provider.dart';
 
@@ -104,6 +105,23 @@ class AccountScreen extends ConsumerWidget {
           const SizedBox(height: 12),
 
           _SectionLabel('Preferences'),
+          Consumer(builder: (context, ref, _) {
+            final isDark = ref.watch(themeModeProvider.notifier).isDark;
+            return ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              leading: Icon(
+                isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                color: SpendlyColors.neutral600,
+              ),
+              title: Text('Dark Mode', style: AppTextStyles.bodyPrimary()),
+              trailing: Switch.adaptive(
+                value: isDark,
+                activeColor: SpendlyColors.primary,
+                onChanged: (_) => ref.read(themeModeProvider.notifier).toggle(),
+              ),
+              onTap: () => ref.read(themeModeProvider.notifier).toggle(),
+            );
+          }),
           _SettingsTile(
             icon: Icons.notifications_outlined,
             label: 'Notifications',
