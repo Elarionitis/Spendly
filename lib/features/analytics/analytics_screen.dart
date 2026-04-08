@@ -4,7 +4,6 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/shared_widgets.dart';
-import '../groups/group_provider.dart';
 import 'analytics_provider.dart';
 
 class AnalyticsScreen extends ConsumerStatefulWidget {

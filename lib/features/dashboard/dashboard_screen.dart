@@ -38,315 +38,348 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          // ─── Hero Header ─────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(24, 60, 24, 32),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(expensesStreamProvider);
+          ref.invalidate(settlementsStreamProvider);
+          ref.invalidate(groupsStreamProvider);
+          ref.invalidate(usersStreamProvider);
+          // Wait for any to complete or just a small delay for UX
+          await Future.delayed(const Duration(milliseconds: 500));
+        },
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            // ─── Hero Header ─────────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(24, 60, 24, 32),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '$greeting,',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Text(
-                              user?.name.split(' ').first ?? 'User',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => _showProfileMenu(context, ref),
-                        child: UserAvatar(
-                          name: user?.name ?? 'User',
-                          userId: user?.id ?? 'u1',
-                          size: 44,
-                        ),
-                      ),
-                    ],
-                  ).animate().fadeIn(duration: 400.ms),
-                  const SizedBox(height: 28),
-                  // Net balance card
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(20),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withAlpha(30)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        const Text(
-                          'Net Balance',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '$greeting,',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                user?.name.split(' ').first ?? 'User',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          AppFormatters.currency(net.abs()),
-                          style: TextStyle(
-                            color: net >= 0 ? const Color(0xFF34D399) : const Color(0xFFF87171),
-                            fontSize: 36,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -1,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          net >= 0 ? 'You are owed money' : 'You owe money',
-                          style: const TextStyle(
-                            color: Colors.white60,
-                            fontSize: 12,
+                        GestureDetector(
+                          onTap: () => _showProfileMenu(context, ref),
+                          child: UserAvatar(
+                            name: user?.name ?? 'User',
+                            userId: user?.id ?? 'u1',
+                            size: 44,
                           ),
                         ),
                       ],
-                    ),
-                  ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
-                  const SizedBox(height: 16),
-                  // Owe / Owed split
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildMiniBalanceCard(
-                          'You Owe',
-                          owe,
-                          const Color(0xFFF87171),
-                          Icons.arrow_upward_rounded,
-                        ),
+                    ).animate().fadeIn(duration: 400.ms),
+                    const SizedBox(height: 28),
+                    // Net balance card
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(20),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withAlpha(30)),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildMiniBalanceCard(
-                          'Owed to You',
-                          owed,
-                          const Color(0xFF34D399),
-                          Icons.arrow_downward_rounded,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Net Balance',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            AppFormatters.currency(net.abs()),
+                            style: TextStyle(
+                              color: net >= 0 ? const Color(0xFF34D399) : const Color(0xFFF87171),
+                              fontSize: 36,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -1,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            net >= 0 ? 'You are owed money' : 'You owe money',
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ).animate().fadeIn(delay: 300.ms),
-                ],
+                    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+                    const SizedBox(height: 16),
+                    // Owe / Owed split
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildMiniBalanceCard(
+                            'You Owe',
+                            owe,
+                            const Color(0xFFF87171),
+                            Icons.arrow_upward_rounded,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildMiniBalanceCard(
+                            'Owed to You',
+                            owed,
+                            const Color(0xFF34D399),
+                            Icons.arrow_downward_rounded,
+                          ),
+                        ),
+                      ],
+                    ).animate().fadeIn(delay: 300.ms),
+                  ],
+                ),
               ),
             ),
-          ),
-
-          // ─── Quick Actions ────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SectionHeader(title: 'Quick Actions'),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      _buildActionTile(
-                        context,
-                        icon: Icons.add_rounded,
-                        label: 'Add\nExpense',
-                        color: SpendlyColors.primary,
-                        onTap: () => context.go('/groups'),
-                      ),
-                      const SizedBox(width: 12),
-                      _buildActionTile(
-                        context,
-                        icon: Icons.group_add_rounded,
-                        label: 'New\nGroup',
-                        color: const Color(0xFF8B5CF6),
-                        onTap: () => context.go('/groups/add'),
-                      ),
-                      const SizedBox(width: 12),
-                      _buildActionTile(
-                        context,
-                        icon: Icons.handshake_rounded,
-                        label: 'Settle\nUp',
-                        color: const Color(0xFF10B981),
-                        onTap: () => context.go('/settle'),
-                      ),
-                      const SizedBox(width: 12),
-                      _buildActionTile(
-                        context,
-                        icon: Icons.bar_chart_rounded,
-                        label: 'Analytics',
-                        color: const Color(0xFFF59E0B),
-                        onTap: () => context.go('/analytics'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(delay: 400.ms),
-          ),
-
-          // ─── Pending Settlements ──────────────────────────────────────────
-          if (pendingSettlements.isNotEmpty)
+  
+            // ─── Quick Actions ────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SectionHeader(
-                      title: 'Pending Settlements',
-                      actionLabel: 'View All',
-                      onAction: () => context.go('/settlements'),
-                    ),
-                    const SizedBox(height: 12),
-                    ...pendingSettlements.take(2).map(
-                          (s) => _buildSettlementAlert(context, ref, s),
+                    const SectionHeader(title: 'Quick Actions'),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _buildActionTile(
+                          context,
+                          icon: Icons.add_rounded,
+                          label: 'Add\nExpense',
+                          color: SpendlyColors.primary,
+                          onTap: () => context.go('/expenses/add'),
                         ),
+                        const SizedBox(width: 12),
+                        _buildActionTile(
+                          context,
+                          icon: Icons.group_add_rounded,
+                          label: 'New\nGroup',
+                          color: const Color(0xFF8B5CF6),
+                          onTap: () => context.go('/groups/add'),
+                        ),
+                        const SizedBox(width: 12),
+                        _buildActionTile(
+                          context,
+                          icon: Icons.handshake_rounded,
+                          label: 'Settle\nUp',
+                          color: const Color(0xFF10B981),
+                          onTap: () => context.go('/settle'),
+                        ),
+                        const SizedBox(width: 12),
+                        _buildActionTile(
+                          context,
+                          icon: Icons.bar_chart_rounded,
+                          label: 'Analytics',
+                          color: const Color(0xFFF59E0B),
+                          onTap: () => context.go('/analytics'),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-              ).animate().fadeIn(delay: 500.ms),
+              ).animate().fadeIn(delay: 400.ms),
             ),
-
-          // ─── Your Groups ──────────────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-              child: SectionHeader(
-                title: 'Your Groups',
-                actionLabel: 'See All',
-                onAction: () => context.go('/groups'),
+  
+            // ─── Pending Settlements ──────────────────────────────────────────
+            if (pendingSettlements.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SectionHeader(
+                        title: 'Pending Settlements',
+                        actionLabel: 'View All',
+                        onAction: () => context.go('/settlements'),
+                      ),
+                      const SizedBox(height: 12),
+                      ...pendingSettlements.take(2).map(
+                            (s) => _buildSettlementAlert(context, ref, s),
+                          ),
+                    ],
+                  ),
+                ).animate().fadeIn(delay: 500.ms),
               ),
-            ).animate().fadeIn(delay: 550.ms),
-          ),
-          if (groups.isEmpty)
+  
+            // ─── Your Groups ──────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                child: SectionHeader(
+                  title: 'Your Groups',
+                  actionLabel: 'See All',
+                  onAction: () => context.go('/groups'),
+                ),
+              ).animate().fadeIn(delay: 550.ms),
+            ),
+            if (groups.isEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: SpendlyCard(
+                    child: EmptyState(
+                      icon: Icons.group_outlined,
+                      title: 'No groups yet',
+                      subtitle: 'Create a group to start splitting expenses',
+                      actionLabel: 'Create Group',
+                      onAction: () => context.go('/groups/add'),
+                    ),
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: SpendlyCard(
-                  child: EmptyState(
-                    icon: Icons.group_outlined,
-                    title: 'No groups yet',
-                    subtitle: 'Create a group to start splitting expenses',
-                    actionLabel: 'Create Group',
-                    onAction: () => context.go('/groups/add'),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final group = groups[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildGroupCard(context, ref, group),
+                      ).animate().fadeIn(delay: (600 + index * 80).ms);
+                    },
+                    childCount: groups.take(3).length,
                   ),
                 ),
               ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final group = groups[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildGroupCard(context, ref, group),
-                    ).animate().fadeIn(delay: (600 + index * 80).ms);
-                  },
-                  childCount: groups.take(3).length,
-                ),
-              ),
-            ),
-
-          // ─── Recent Personal Expenses ─────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-              child: SectionHeader(
-                title: 'Recent Spending',
-                actionLabel: 'See All',
-                onAction: () => context.go('/personal'),
-              ),
-            ).animate().fadeIn(delay: 700.ms),
-          ),
-          if (recentPersonal.isEmpty)
+  
+            // ─── Recent Personal Expenses ─────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: SpendlyCard(
-                  child: EmptyState(
-                    icon: Icons.receipt_long_outlined,
-                    title: 'No personal expenses',
-                    subtitle: 'Track your personal spending separately',
-                    actionLabel: 'Add Expense',
-                    onAction: () => context.go('/personal/add'),
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                child: SectionHeader(
+                  title: 'Recent Spending',
+                  actionLabel: 'See All',
+                  onAction: () => context.go('/personal'),
+                ),
+              ).animate().fadeIn(delay: 700.ms),
+            ),
+            if (recentPersonal.isEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: SpendlyCard(
+                    child: EmptyState(
+                      icon: Icons.receipt_long_outlined,
+                      title: 'No personal expenses',
+                      subtitle: 'Track your personal spending separately',
+                      actionLabel: 'Add Expense',
+                      onAction: () => context.go('/personal/add'),
+                    ),
                   ),
                 ),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final e = recentPersonal[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: SpendlyCard(
-                        onTap: () => context.go('/personal/add', extra: {'expenseId': e.id}),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: SpendlyColors.chartColors[
-                                        e.category.index %
-                                            SpendlyColors.chartColors.length]
-                                    .withAlpha(25),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  e.category.emoji,
-                                  style: const TextStyle(fontSize: 20),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final e = recentPersonal[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: SpendlyCard(
+                          onTap: () => context.go('/personal/add', extra: {'expenseId': e.id}),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: SpendlyColors.chartColors[
+                                          e.category.index %
+                                              SpendlyColors.chartColors.length]
+                                      .withAlpha(25),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    e.category.emoji,
+                                    style: const TextStyle(fontSize: 20),
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      e.description,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(fontWeight: FontWeight.w600),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      e.category.label,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                              color: SpendlyColors.neutral500),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    e.description,
+                                    AppFormatters.currency(e.amount),
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodyMedium
-                                        ?.copyWith(fontWeight: FontWeight.w600),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                        ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: SpendlyColors.danger),
                                   ),
                                   Text(
-                                    e.category.label,
+                                    AppFormatters.relativeDate(e.date),
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodySmall
@@ -355,41 +388,19 @@ class DashboardScreen extends ConsumerWidget {
                                   ),
                                 ],
                               ),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  AppFormatters.currency(e.amount),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          color: SpendlyColors.danger),
-                                ),
-                                Text(
-                                  AppFormatters.relativeDate(e.date),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                          color: SpendlyColors.neutral500),
-                                ),
-                              ],
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ).animate().fadeIn(delay: (750 + index * 60).ms);
-                  },
-                  childCount: recentPersonal.take(5).length,
+                      ).animate().fadeIn(delay: (750 + index * 60).ms);
+                    },
+                    childCount: recentPersonal.take(5).length,
+                  ),
                 ),
               ),
-            ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
-        ],
+  
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          ],
+        ),
       ),
     );
   }
