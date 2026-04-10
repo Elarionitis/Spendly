@@ -33,12 +33,6 @@ class SettlementActionNotifier {
     if (settlement.fromUserId == settlement.toUserId) {
       throw Exception('Invalid settlement: payer and payee cannot be the same user.');
     }
-    if ((settlement.transactionId == null || settlement.transactionId!.trim().isEmpty) &&
-        settlement.proofUrl == null &&
-        settlement.proofImagePath == null &&
-        imageFile == null) {
-      throw Exception('Please provide a transaction ID or payment proof.');
-    }
 
     final pendingSettlement = settlement.copyWith(
       status: SettlementStatus.pendingVerification,

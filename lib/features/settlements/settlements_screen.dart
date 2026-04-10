@@ -357,7 +357,9 @@ class _SettlementsScreenState extends ConsumerState<SettlementsScreen> {
       amount: amount,
       status: SettlementStatus.pendingVerification,
       createdAt: DateTime.now(),
-      transactionId: _txnController.text,
+      transactionId: _txnController.text.trim().isEmpty
+          ? null
+          : _txnController.text.trim(),
       proofImagePath: _proofImagePath,
     );
 
