@@ -149,7 +149,7 @@ context.pushNamed(AppRoute.expenseDetails.name, pathParameters: {'id': '123'});
 ## 🧪 Development
 
 ### Running Tests
-Ensure code quality by running the test suite:
+Ensure code quality by running the test suite. Tests are maintained to align with the latest UI and logic changes:
 bash
 flutter test
 
