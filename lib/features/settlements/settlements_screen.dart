@@ -369,8 +369,14 @@ class _SettlementsScreenState extends ConsumerState<SettlementsScreen> {
             imageFile: _proofImagePath != null ? File(_proofImagePath!) : null,
           );
       if (!mounted) return;
+
+      final isIncomingRecordedByMe = s.toUserId == user.id;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Settlement request submitted ✓')),
+        SnackBar(
+          content: Text(isIncomingRecordedByMe
+              ? 'Settlement recorded and auto-verified ✓'
+              : 'Settlement request submitted ✓'),
+        ),
       );
       setState(() {
         _selectedFriendId = null;

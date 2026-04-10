@@ -511,9 +511,13 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       );
 
       if (mounted) {
+        final isIncomingRecordedByMe = toUserId == user.id &&
+            (widget.groupId == null || widget.groupId!.isEmpty);
         messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Settlement submitted successfully! ✓'),
+          SnackBar(
+            content: Text(isIncomingRecordedByMe
+                ? 'Settlement recorded and auto-verified ✓'
+                : 'Settlement submitted successfully! ✓'),
             backgroundColor: SpendlyColors.success,
           ),
         );

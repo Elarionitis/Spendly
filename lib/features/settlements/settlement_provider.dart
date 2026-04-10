@@ -30,12 +30,31 @@ class SettlementActionNotifier {
   SettlementActionNotifier(this._ref);
 
   Future<void> createSettlement(Settlement settlement, {dynamic imageFile}) async {
+    final currentUser = _ref.read(authProvider);
+    if (currentUser == null) {
+      throw Exception('You must be logged in to create a settlement.');
+    }
+
     if (settlement.fromUserId == settlement.toUserId) {
       throw Exception('Invalid settlement: payer and payee cannot be the same user.');
     }
 
+    // If payee is recording that someone already paid them, auto-verify.
+    // This avoids unnecessary self-approval for receiver-created incoming settlements.
+    final isPersonalSettlement = settlement.groupId == null || settlement.groupId!.isEmpty;
+    final createdByPayee = currentUser.id == settlement.toUserId;
+    final shouldAutoVerify = isPersonalSettlement && createdByPayee;
+
     final pendingSettlement = settlement.copyWith(
-      status: SettlementStatus.pendingVerification,
+      status: shouldAutoVerify
+          ? SettlementStatus.verified
+          : SettlementStatus.pendingVerification,
+      approvals: shouldAutoVerify
+          ? [
+              ...settlement.approvals.where((id) => id != currentUser.id),
+              currentUser.id,
+            ]
+          : settlement.approvals,
       verificationAttempts: settlement.verificationAttempts,
     );
 
