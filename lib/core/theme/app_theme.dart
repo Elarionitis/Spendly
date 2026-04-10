@@ -30,7 +30,7 @@ class SpendlyColors {
   // Dark theme surfaces
   static const Color darkSurface = Color(0xFF0F172A);
   static const Color darkCard = Color(0xFF1E293B);
-  static const Color darkCardElevated = Color(0xFF252F3F);
+  static const Color darkCardElevated = Color(0xFF283548);
 
   // Chart colors
   static const List<Color> chartColors = [
@@ -380,7 +380,7 @@ class SpendlyTheme {
       onError: Colors.white,
       surface: SpendlyColors.darkSurface,
       onSurface: Colors.white,
-      surfaceContainerHighest: SpendlyColors.darkCard,
+      surfaceContainerHighest: SpendlyColors.darkCardElevated,
       onSurfaceVariant: SpendlyColors.neutral400,
       outline: SpendlyColors.neutral700,
       outlineVariant: SpendlyColors.neutral800,
@@ -398,13 +398,14 @@ class SpendlyTheme {
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: SpendlyColors.darkCard,
+        color: SpendlyColors.darkCardElevated,
         surfaceTintColor: Colors.transparent,
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: SpendlyColors.darkSurface,
+        backgroundColor: SpendlyColors.darkCard,
         foregroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0.8,
         titleTextStyle: GoogleFonts.inter(
           fontSize: 18,
           fontWeight: FontWeight.w700,
@@ -413,7 +414,7 @@ class SpendlyTheme {
         ),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: SpendlyColors.darkCard,
+        backgroundColor: SpendlyColors.darkCardElevated,
         selectedItemColor: SpendlyColors.primaryLight,
         unselectedItemColor: SpendlyColors.neutral600,
         type: BottomNavigationBarType.fixed,
@@ -433,7 +434,7 @@ class SpendlyTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: SpendlyColors.darkCard,
+        fillColor: SpendlyColors.darkCardElevated,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -480,7 +481,7 @@ class SpendlyTheme {
         showCheckmark: false,
       ),
       dividerTheme: const DividerThemeData(
-        color: SpendlyColors.neutral800,
+        color: SpendlyColors.neutral700,
         thickness: 1,
         space: 1,
       ),
@@ -497,7 +498,7 @@ class SpendlyTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: SpendlyColors.darkCard,
+        backgroundColor: SpendlyColors.darkCardElevated,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         titleTextStyle: GoogleFonts.inter(
           fontSize: 18,
@@ -509,7 +510,7 @@ class SpendlyTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        backgroundColor: SpendlyColors.darkCard,
+        backgroundColor: SpendlyColors.darkCardElevated,
       ),
     );
   }

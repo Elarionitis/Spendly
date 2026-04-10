@@ -28,26 +28,29 @@ class SpendlyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final onButtonColor = color != null ? Colors.white : cs.onPrimary;
+
     final button = ElevatedButton(
       onPressed: isLoading ? null : onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: color ?? Theme.of(context).colorScheme.primary,
-        foregroundColor: color != null ? Colors.white : Theme.of(context).colorScheme.onPrimary,
+        backgroundColor: color ?? cs.primary,
+        foregroundColor: onButtonColor,
         minimumSize: Size(isFullWidth ? double.infinity : 0, 52),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
         ),
       ),
       child: isLoading
-          ? const SizedBox(
+          ? SizedBox(
               width: 20,
               height: 20,
-              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+              child: CircularProgressIndicator(color: onButtonColor, strokeWidth: 2),
             )
           : Text(
               text,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: onButtonColor,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -137,15 +140,31 @@ class SpendlyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final resolvedBackground = backgroundColor ??
+        theme.cardTheme.color ??
+        cs.surfaceContainerHighest;
+
     final decoration = BoxDecoration(
-      color: gradient != null ? null : (backgroundColor ?? Theme.of(context).cardColor),
+      color: gradient != null ? null : resolvedBackground,
       gradient: gradient,
       borderRadius: BorderRadius.circular(borderRadius ?? 16),
+      border: gradient == null
+          ? Border.all(
+              color: isDark
+                  ? cs.outline.withAlpha(120)
+                  : cs.outlineVariant.withAlpha(180),
+            )
+          : null,
       boxShadow: [
         BoxShadow(
-          color: Theme.of(context).shadowColor.withOpacity(0.04),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
+          color: isDark
+              ? Colors.black.withAlpha(70)
+              : theme.shadowColor.withAlpha(10),
+          blurRadius: isDark ? 18 : 10,
+          offset: const Offset(0, 6),
         ),
       ],
     );
@@ -280,19 +299,19 @@ class StatusBadge extends StatelessWidget {
   static StatusBadge pending({String label = 'Pending'}) => StatusBadge(
         label: label,
         color: SpendlyColors.warning,
-        backgroundColor: const Color(0xFFFEF3C7),
+      backgroundColor: SpendlyColors.warning.withAlpha(28),
       );
 
   static StatusBadge verified({String label = 'Verified'}) => StatusBadge(
         label: label,
         color: SpendlyColors.success,
-        backgroundColor: const Color(0xFFD1FAE5),
+      backgroundColor: SpendlyColors.success.withAlpha(28),
       );
 
   static StatusBadge rejected({String label = 'Rejected'}) => StatusBadge(
         label: label,
         color: SpendlyColors.danger,
-        backgroundColor: const Color(0xFFFEE2E2),
+      backgroundColor: SpendlyColors.danger.withAlpha(28),
       );
 
   @override
@@ -346,7 +365,7 @@ class StatCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: gradient != null ? Colors.white24 : color.withOpacity(0.1),
+              color: gradient != null ? Colors.white24 : color.withAlpha(26),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: gradient != null ? Colors.white : color, size: 20),

@@ -270,6 +270,8 @@ class _CommentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
@@ -280,13 +282,23 @@ class _CommentTile extends StatelessWidget {
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: SpendlyColors.neutral100, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(userName, style: AppTextStyles.caption(color: SpendlyColors.neutral700).copyWith(fontWeight: FontWeight.w700)),
+                  Text(
+                    userName,
+                    style: AppTextStyles.caption(color: cs.onSurfaceVariant)
+                        .copyWith(fontWeight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 2),
-                  Text(comment.message, style: AppTextStyles.bodySecondary()),
+                  Text(
+                    comment.message,
+                    style: AppTextStyles.bodySecondary(color: cs.onSurface),
+                  ),
                 ],
               ),
             ),

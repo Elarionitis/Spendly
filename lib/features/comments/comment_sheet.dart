@@ -94,7 +94,7 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                 width: 32,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: SpendlyColors.neutral300,
+                  color: cs.outlineVariant,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -110,8 +110,7 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                           ?.copyWith(fontWeight: FontWeight.w700)),
                   const Spacer(),
                   Text('${comments.length}',
-                      style: AppTextStyles.caption(
-                          color: SpendlyColors.neutral500)),
+                      style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                 ],
               ),
             ),
@@ -125,14 +124,12 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.chat_bubble_outline_rounded,
-                              size: 40, color: SpendlyColors.neutral300),
+                              size: 40, color: SpendlyColors.neutral400),
                           const SizedBox(height: 8),
                           Text('No comments yet',
-                              style: AppTextStyles.bodySecondary(
-                                  color: SpendlyColors.neutral400)),
+                              style: AppTextStyles.bodySecondary(color: cs.onSurfaceVariant)),
                           Text('Be the first to comment!',
-                              style: AppTextStyles.caption(
-                                  color: SpendlyColors.neutral400)),
+                              style: AppTextStyles.caption(color: cs.onSurfaceVariant)),
                         ],
                       ),
                     )
@@ -177,9 +174,7 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                                             left: 2, bottom: 2),
                                         child: Text(
                                           name.split(' ').first,
-                                          style: AppTextStyles.caption(
-                                              color: SpendlyColors
-                                                  .neutral500),
+                                          style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                                         ),
                                       ),
                                     Container(
@@ -187,8 +182,8 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                                           horizontal: 12, vertical: 8),
                                       decoration: BoxDecoration(
                                         color: isMe
-                                            ? SpendlyColors.primary
-                                            : cs.surfaceContainerHighest,
+                                            ? cs.primaryContainer
+                                            : cs.surfaceContainerHighest.withAlpha(220),
                                         borderRadius: BorderRadius.only(
                                           topLeft: const Radius.circular(16),
                                           topRight: const Radius.circular(16),
@@ -204,8 +199,8 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                                         c.message,
                                         style: TextStyle(
                                           color: isMe
-                                              ? Colors.white
-                                              : cs.onSurface,
+                                              ? cs.onPrimaryContainer
+                                              : cs.onSurfaceVariant,
                                           fontSize: 14,
                                         ),
                                       ),
@@ -215,9 +210,7 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                                           top: 2, left: 4, right: 4),
                                       child: Text(
                                         _timeAgo(c.timestamp),
-                                        style: AppTextStyles.caption(
-                                            color:
-                                                SpendlyColors.neutral400),
+                                        style: AppTextStyles.caption(color: cs.onSurfaceVariant),
                                       ),
                                     ),
                                   ],
@@ -275,12 +268,12 @@ class _CommentSheetState extends ConsumerState<CommentSheet> {
                       child: Container(
                         width: 40,
                         height: 40,
-                        decoration: const BoxDecoration(
-                          color: SpendlyColors.primary,
+                        decoration: BoxDecoration(
+                          color: cs.primary,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.send_rounded,
-                            color: Colors.white, size: 18),
+                        child: Icon(Icons.send_rounded,
+                            color: cs.onPrimary, size: 18),
                       ),
                     ),
                   ],
