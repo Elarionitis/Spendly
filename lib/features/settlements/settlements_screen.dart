@@ -350,6 +350,14 @@ class _SettlementsScreenState extends ConsumerState<SettlementsScreen> {
     final balances = ref.read(globalBalancesProvider);
     final balance = balances[_selectedFriendId!] ?? 0;
 
+    if (balance.abs() < 0.01) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No pending balance to settle.')),
+      );
+      return;
+    }
+
     final s = Settlement(
       id: const Uuid().v4(),
       fromUserId: balance <= 0 ? user.id : _selectedFriendId!,

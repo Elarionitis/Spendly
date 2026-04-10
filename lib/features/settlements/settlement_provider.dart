@@ -26,6 +26,7 @@ final settlementActionProvider = Provider<SettlementActionNotifier>((ref) {
 class SettlementActionNotifier {
   final Ref _ref;
   static const int _maxVerificationAttempts = 3;
+  static const double _epsilon = 0.01;
 
   SettlementActionNotifier(this._ref);
 
@@ -37,6 +38,18 @@ class SettlementActionNotifier {
 
     if (settlement.fromUserId == settlement.toUserId) {
       throw Exception('Invalid settlement: payer and payee cannot be the same user.');
+    }
+
+    final all = await _ref
+        .read(settlementRepositoryProvider)
+        .getUserSettlements(currentUser.id);
+    final related = all.where((existing) => _isSameConversation(existing, settlement));
+
+    final hasPending = related.any(
+      (existing) => existing.status == SettlementStatus.pendingVerification,
+    );
+    if (hasPending) {
+      throw Exception('A pending settlement request already exists for this balance.');
     }
 
     // If payee is recording that someone already paid them, auto-verify.
@@ -61,6 +74,16 @@ class SettlementActionNotifier {
     await _ref
         .read(settlementRepositoryProvider)
         .addSettlement(pendingSettlement, imageFile: imageFile);
+
+    // If a new verified settlement is recorded, invalidate older pending ones
+    // in the same conversation to prevent duplicate approval/rejection actions.
+    if (pendingSettlement.status == SettlementStatus.verified) {
+      await _closeSupersededPending(
+        all,
+        reference: pendingSettlement,
+      );
+    }
+
     _ref.invalidate(settlementsStreamProvider);
   }
 
@@ -103,6 +126,29 @@ class SettlementActionNotifier {
     final requiredApprovals = _requiredApprovalsFor(s);
     final isFullyVerified = newApprovals.length >= requiredApprovals;
 
+    final all = await _ref
+        .read(settlementRepositoryProvider)
+        .getUserSettlements(userId);
+    final hasSupersedingVerified = all.any((existing) {
+      if (!_isSameConversation(existing, s)) return false;
+      if (existing.status != SettlementStatus.verified) return false;
+      if (existing.id == s.id) return false;
+      return existing.createdAt.isAfter(s.createdAt) && existing.amount + _epsilon >= s.amount;
+    });
+
+    if (hasSupersedingVerified) {
+      await _ref.read(settlementRepositoryProvider).updateStatus(
+        s.id,
+        SettlementStatus.rejected,
+        rejectionReason: 'Superseded by an already verified settlement.',
+        verificationAttempts: s.verificationAttempts,
+        approvals: s.approvals,
+        rejections: [...s.rejections, userId],
+      );
+      _ref.invalidate(settlementsStreamProvider);
+      throw Exception('This request is outdated because the balance is already settled.');
+    }
+
     if (s.groupId == null && userId != s.toUserId) {
       throw Exception('Only the payee can verify this settlement.');
     }
@@ -114,6 +160,19 @@ class SettlementActionNotifier {
       approvals: newApprovals,
       rejections: newRejections,
     );
+
+    if (isFullyVerified) {
+      final refreshed = await _ref
+          .read(settlementRepositoryProvider)
+          .getSettlementById(id);
+      if (refreshed != null) {
+        final allForUser = await _ref
+            .read(settlementRepositoryProvider)
+            .getUserSettlements(userId);
+        await _closeSupersededPending(allForUser, reference: refreshed);
+      }
+    }
+
     _ref.invalidate(settlementsStreamProvider);
   }
 
@@ -169,6 +228,38 @@ class SettlementActionNotifier {
 
     final sixtyPercent = (group.memberIds.length * 0.6).ceil();
     return sixtyPercent < 1 ? 1 : sixtyPercent;
+  }
+
+  bool _isSameConversation(Settlement a, Settlement b) {
+    final sameDirection = a.fromUserId == b.fromUserId && a.toUserId == b.toUserId;
+    final reverseDirection = a.fromUserId == b.toUserId && a.toUserId == b.fromUserId;
+    final groupA = (a.groupId ?? '').trim();
+    final groupB = (b.groupId ?? '').trim();
+    return (sameDirection || reverseDirection) && groupA == groupB;
+  }
+
+  Future<void> _closeSupersededPending(
+    List<Settlement> all, {
+    required Settlement reference,
+  }) async {
+    final candidates = all.where((existing) {
+      if (existing.id == reference.id) return false;
+      if (existing.status != SettlementStatus.pendingVerification) return false;
+      if (!_isSameConversation(existing, reference)) return false;
+      return existing.createdAt.isBefore(reference.createdAt) ||
+          existing.createdAt.isAtSameMomentAs(reference.createdAt);
+    });
+
+    for (final old in candidates) {
+      await _ref.read(settlementRepositoryProvider).updateStatus(
+        old.id,
+        SettlementStatus.rejected,
+        rejectionReason: 'Superseded by a completed settlement.',
+        verificationAttempts: old.verificationAttempts,
+        approvals: old.approvals,
+        rejections: old.rejections,
+      );
+    }
   }
 }
 

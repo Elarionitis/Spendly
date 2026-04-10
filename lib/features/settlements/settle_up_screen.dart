@@ -473,6 +473,13 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       balance = (record?['balance'] as double?) ?? 0.0;
     }
 
+    if (balance.abs() < 0.01) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No pending balance to settle.')),
+      );
+      return;
+    }
+
     // Determine payer direction
     final String fromUserId;
     final String toUserId;
