@@ -39,6 +39,15 @@ class DemoSettlementRepository implements SettlementRepository {
   void _emit() => _controller.add(List.unmodifiable(_settlements));
 
   @override
+  Future<Settlement?> getSettlementById(String id) async {
+    try {
+      return _settlements.firstWhere((s) => s.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
   Stream<List<Settlement>> watchUserSettlements(String userId) {
     final filtered = _settlements
         .where((s) => s.fromUserId == userId || s.toUserId == userId)

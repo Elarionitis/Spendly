@@ -2,6 +2,9 @@ import '../models/settlement.dart';
 import '../models/enums.dart';
 
 abstract class SettlementRepository {
+  /// Fetch a single settlement by ID.
+  Future<Settlement?> getSettlementById(String id);
+
   /// Real-time stream of all settlements involving a user.
   Stream<List<Settlement>> watchUserSettlements(String userId);
 

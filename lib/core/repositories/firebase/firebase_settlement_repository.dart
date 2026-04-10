@@ -15,6 +15,13 @@ class FirebaseSettlementRepository implements SettlementRepository {
 
   CollectionReference<Map<String, dynamic>> get _col => _db.collection('settlements');
 
+  @override
+  Future<Settlement?> getSettlementById(String id) async {
+    final doc = await _col.doc(id).get();
+    if (!doc.exists) return null;
+    return Settlement.fromJson(doc.data()!, id: doc.id);
+  }
+
   bool _isIndexError(FirebaseException e) {
     final message = e.message ?? '';
     return e.code == 'failed-precondition' && message.toLowerCase().contains('index');

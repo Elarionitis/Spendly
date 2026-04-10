@@ -48,6 +48,7 @@ class SettlementActionNotifier {
     await _ref
         .read(settlementRepositoryProvider)
         .addSettlement(pendingSettlement, imageFile: imageFile);
+    _ref.invalidate(settlementsStreamProvider);
   }
 
   Future<void> settleUp(String friendId, double amount) async {
@@ -64,14 +65,14 @@ class SettlementActionNotifier {
     );
 
     await _ref.read(settlementRepositoryProvider).addSettlement(settlement);
+    _ref.invalidate(settlementsStreamProvider);
   }
   
   Future<void> approveSettlement(String id, String userId) async {
-    final settlements = _ref.read(settlementsStreamProvider).value ?? [];
-    final s = settlements.firstWhere(
-      (s) => s.id == id,
-      orElse: () => throw Exception('Settlement not found.'),
-    );
+    final s = await _ref.read(settlementRepositoryProvider).getSettlementById(id);
+    if (s == null) {
+      throw Exception('Settlement not found.');
+    }
     if (s.status == SettlementStatus.verified) return;
     if (s.status == SettlementStatus.rejected) {
       throw Exception('Rejected settlement cannot be approved. Please submit a new request.');
@@ -100,14 +101,14 @@ class SettlementActionNotifier {
       approvals: newApprovals,
       rejections: newRejections,
     );
+    _ref.invalidate(settlementsStreamProvider);
   }
 
   Future<void> rejectSettlement(String id, String userId, {String? reason}) async {
-    final settlements = _ref.read(settlementsStreamProvider).value ?? [];
-    final s = settlements.firstWhere(
-      (s) => s.id == id,
-      orElse: () => throw Exception('Settlement not found.'),
-    );
+    final s = await _ref.read(settlementRepositoryProvider).getSettlementById(id);
+    if (s == null) {
+      throw Exception('Settlement not found.');
+    }
     if (s.status == SettlementStatus.verified) {
       throw Exception('Verified settlement cannot be rejected.');
     }
@@ -134,10 +135,13 @@ class SettlementActionNotifier {
       approvals: newApprovals,
       rejections: newRejections,
     );
+    _ref.invalidate(settlementsStreamProvider);
   }
 
-  Future<void> updateTransactionId(String id, String transactionId) => 
-    _ref.read(settlementRepositoryProvider).updateTransactionId(id, transactionId);
+  Future<void> updateTransactionId(String id, String transactionId) async {
+    await _ref.read(settlementRepositoryProvider).updateTransactionId(id, transactionId);
+    _ref.invalidate(settlementsStreamProvider);
+  }
 
   int _requiredApprovalsFor(Settlement settlement) {
     if (settlement.groupId == null || settlement.groupId!.isEmpty) {
