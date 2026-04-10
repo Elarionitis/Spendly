@@ -13,6 +13,9 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
+  static final RegExp _emailRegex =
+      RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -160,28 +163,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _register() async {
-    if (_nameController.text.isEmpty ||
-        _emailController.text.isEmpty ||
-        _passwordController.text.isEmpty) {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
       _showError('Please fill in all fields.');
       return;
     }
-    if (!_emailController.text.contains('@')) {
+    if (!_emailRegex.hasMatch(email)) {
       _showError('Please enter a valid email.');
       return;
     }
-    if (_passwordController.text.length < 6) {
+    if (password.length < 6) {
       _showError('Password must be at least 6 characters.');
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      ref.read(authProvider.notifier).register(
-            _nameController.text.trim(),
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
+      await ref.read(authProvider.notifier).register(name, email, password);
       if (mounted) context.go('/home');
     } catch (e) {
       if (mounted) _showError(e.toString().replaceAll('Exception: ', ''));

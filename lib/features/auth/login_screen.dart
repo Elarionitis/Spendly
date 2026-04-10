@@ -13,6 +13,9 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  static final RegExp _emailRegex =
+      RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -197,25 +200,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   /// EMAIL LOGIN
   Future<void> _login() async {
-    if (_emailController.text.isEmpty ||
-        _passwordController.text.isEmpty) {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
       _showError('Enter email & password');
+      return;
+    }
+    if (!_emailRegex.hasMatch(email)) {
+      _showError('Enter a valid email address');
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      ref.read(authProvider.notifier).login(
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
+      await ref.read(authProvider.notifier).login(email, password);
 
       if (mounted) context.go('/home');
     } catch (e) {
-      _showError(e.toString());
+      _showError(e.toString().replaceFirst('Exception: ', ''));
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -235,9 +241,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _demoLogin() {
-    ref.read(authProvider.notifier)
-        .login('alice@spendly.app', 'demo');
-    context.go('/home');
+    ref.read(authProvider.notifier).login('alice@spendly.app', 'demo').then((_) {
+      if (mounted) context.go('/home');
+    }).catchError((_) {
+      if (mounted) {
+        _showError('Demo login is unavailable in Firebase mode.');
+      }
+    });
   }
 
   void _showError(String msg) {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/app_user.dart';
 import '../../core/repositories/repository_providers.dart';
@@ -15,10 +17,11 @@ final authProvider = StateNotifierProvider<AuthNotifier, AppUser?>((ref) {
 class AuthNotifier extends StateNotifier<AppUser?> {
   final AuthRepository _repo;
   final Ref _ref;
+  late final StreamSubscription<AppUser?> _authSubscription;
 
   AuthNotifier(this._repo, this._ref) : super(_repo.currentUser) {
     // Listen to auth state stream so state stays reactive
-    _repo.authStateStream.listen((user) => state = user);
+    _authSubscription = _repo.authStateStream.listen((user) => state = user);
   }
 
   Future<void> login(String email, String password) =>
@@ -36,6 +39,12 @@ class AuthNotifier extends StateNotifier<AppUser?> {
   }
 
   bool get isAuthenticated => state != null;
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
+  }
 }
 
 // ─── User lookup providers ─────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../models/app_user.dart';
@@ -30,6 +30,29 @@ class FirebaseAuthRepository implements AuthRepository {
     );
   }
 
+  Exception _mapAuthError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'invalid-email':
+        return Exception('Please enter a valid email address.');
+      case 'user-disabled':
+        return Exception('This account has been disabled.');
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return Exception('Invalid email or password.');
+      case 'email-already-in-use':
+        return Exception('This email is already in use.');
+      case 'weak-password':
+        return Exception('Password must be at least 6 characters long.');
+      case 'network-request-failed':
+        return Exception('Network error. Please check your connection.');
+      case 'too-many-requests':
+        return Exception('Too many attempts. Please try again later.');
+      default:
+        return Exception(e.message ?? 'Authentication failed.');
+    }
+  }
+
   @override
   AppUser? get currentUser => _mapUser(_auth.currentUser);
 
@@ -39,29 +62,37 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<void> login(String email, String password) async {
-    await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: email.trim().toLowerCase(),
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw _mapAuthError(e);
+    }
   }
 
   @override
   Future<void> register(String name, String email, String password) async {
-    final credential = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    try {
+      final credential = await _auth.createUserWithEmailAndPassword(
+        email: email.trim().toLowerCase(),
+        password: password,
+      );
 
-    await credential.user?.updateDisplayName(name);
+      await credential.user?.updateDisplayName(name);
 
-    final user = credential.user;
+      final user = credential.user;
 
-    if (user != null) {
-      await _userRepo.saveUser(AppUser(
-        id: user.uid,
-        name: name,
-        email: email,
-      ));
+      if (user != null) {
+        await _userRepo.saveUser(AppUser(
+          id: user.uid,
+          name: name,
+          email: email.trim().toLowerCase(),
+        ));
+      }
+    } on FirebaseAuthException catch (e) {
+      throw _mapAuthError(e);
     }
   }
 
@@ -74,7 +105,7 @@ class FirebaseAuthRepository implements AuthRepository {
       final googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
-        print("Google sign-in cancelled");
+        debugPrint('Google sign-in cancelled');
         return null;
       }
 
@@ -98,15 +129,17 @@ class FirebaseAuthRepository implements AuthRepository {
 
         await _userRepo.saveUser(appUser);
 
-        print("Google Sign-In SUCCESS: ${user.email}");
+        debugPrint('Google Sign-In SUCCESS: ${user.email}');
 
         return appUser;
       }
 
       return null;
+    } on FirebaseAuthException catch (e) {
+      throw _mapAuthError(e);
     } catch (e, stack) {
-      print("GOOGLE SIGN IN ERROR: $e");
-      print("STACKTRACE: $stack");
+      debugPrint('GOOGLE SIGN IN ERROR: $e');
+      debugPrint('STACKTRACE: $stack');
       rethrow;
     }
   }
