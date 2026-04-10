@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router/app_router.dart';
@@ -9,11 +11,31 @@ import 'package:firebase_core/firebase_core.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    Zone.current.handleUncaughtError(details.exception, details.stack ?? StackTrace.current);
+  };
 
-  runApp(const ProviderScope(child: SpendlyApp()));
+  await runZonedGuarded(() async {
+    final firebaseReady = await _initializeFirebase();
+    runApp(ProviderScope(child: SpendlyApp(firebaseReady: firebaseReady)));
+  }, (error, stackTrace) {
+    debugPrint('Uncaught zone error: $error');
+    debugPrint('$stackTrace');
+  });
+}
+
+Future<bool> _initializeFirebase() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    return true;
+  } catch (e, st) {
+    debugPrint('Firebase initialization failed: $e');
+    debugPrint('$st');
+    return false;
+  }
 }
 
 // void main() {
@@ -26,7 +48,9 @@ void main() async {
 // }
 
 class SpendlyApp extends ConsumerWidget {
-  const SpendlyApp({super.key});
+  final bool firebaseReady;
+
+  const SpendlyApp({super.key, required this.firebaseReady});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -40,6 +64,38 @@ class SpendlyApp extends ConsumerWidget {
       darkTheme: SpendlyTheme.darkTheme,
       themeMode: themeMode,
       routerConfig: router,
+      builder: (context, child) {
+        if (!firebaseReady) {
+          return const _BootstrapErrorScreen();
+        }
+        return child ?? const SizedBox.shrink();
+      },
+    );
+  }
+}
+
+class _BootstrapErrorScreen extends StatelessWidget {
+  const _BootstrapErrorScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.cloud_off_rounded, size: 48),
+              SizedBox(height: 12),
+              Text(
+                'Could not connect to Firebase. Please check configuration and restart the app.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
