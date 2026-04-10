@@ -43,9 +43,9 @@ Built with a **Feature-First Architecture**, Spendly ensures scalability and mai
 *   **Image Support**: Attach receipts to expenses using `image_picker`.
 *   **Theming**: Dynamic theme support (Light/Dark mode) defined in the core configuration.
 *   **Deep Linking**: Advanced routing handled by `go_router`.
+*   **Flexible Environments**: Support for toggling between **Demo Mode** and **Original Mode** via app configuration.
 
 ---
-
 ## 🛠 Tech Stack
 
 | Category | Technology |
@@ -123,7 +123,7 @@ lib/
 ### State Management Example (Riverpod)
 Spendly uses Riverpod for reactive state. Here is how the expense state is typically accessed:
 
-```dart
+dart
 // Accessing the expense provider
 final expenseList = ref.watch(expenseProvider);
 
@@ -135,17 +135,19 @@ expenseList.when(
   loading: () => CircularProgressIndicator(),
   error: (err, stack) => Text('Error: $err'),
 );
-```
+
 
 ### Navigation
 Routing is centralized in `lib/core/router/`:
 
-```dart
+dart
 context.pushNamed(AppRoute.expenseDetails.name, pathParameters: {'id': '123'});
-```
+
+
+### Configuration Modes
+The application environment can be toggled in `lib/core/config/app_config.dart`. This allows developers to switch between a demo environment and the original production-ready mode.
 
 ---
-
 ## 🧪 Development
 
 ### Running Tests
