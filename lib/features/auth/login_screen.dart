@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import 'auth_provider.dart';
 
@@ -95,6 +96,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                 ),
 
+                if (useDemoMode) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: SpendlyColors.warning.withAlpha(24),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: SpendlyColors.warning.withAlpha(80)),
+                    ),
+                    child: const Text(
+                      'Demo Mode Enabled',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: SpendlyColors.warning,
+                      ),
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 32),
 
                 /// EMAIL
@@ -131,20 +152,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 /// EMAIL LOGIN
                 _buildLoginButton(),
 
-                const SizedBox(height: 16),
+                if (!useDemoMode) ...[
+                  const SizedBox(height: 16),
+                  _buildGoogleButton(),
+                ],
 
-                /// ⭐ GOOGLE BUTTON (THIS WAS MISSING)
-                _buildGoogleButton(),
-
-                const SizedBox(height: 16),
-
-                _buildDemoButton(),
+                if (useDemoMode) ...[
+                  const SizedBox(height: 16),
+                  _buildDemoButton(),
+                ],
 
                 const SizedBox(height: 28),
 
                 Center(
                   child: TextButton(
-                    onPressed: () => context.go('/register'),
+                    onPressed: () => context.push('/register'),
                     child: const Text("Don't have an account? Sign up"),
                   ),
                 ),
@@ -240,14 +262,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  void _demoLogin() {
-    ref.read(authProvider.notifier).login('alice@spendly.app', 'demo').then((_) {
+  Future<void> _demoLogin() async {
+    try {
+      await ref.read(authProvider.notifier).login('alice@spendly.app', 'demo');
       if (mounted) context.go('/home');
-    }).catchError((_) {
+    } catch (_) {
       if (mounted) {
-        _showError('Demo login is unavailable in Firebase mode.');
+        _showError('Demo login failed. Ensure you launched with SPENDLY_MODE=demo.');
       }
-    });
+    }
   }
 
   void _showError(String msg) {
