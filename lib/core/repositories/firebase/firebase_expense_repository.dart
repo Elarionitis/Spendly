@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../../models/expense.dart';
 import '../../services/cloudinary_service.dart';
 import '../expense_repository.dart';
@@ -11,26 +12,56 @@ class FirebaseExpenseRepository implements ExpenseRepository {
 
   CollectionReference<Map<String, dynamic>> get _col => _db.collection('expenses');
 
+  bool _isIndexError(FirebaseException e) {
+    final message = e.message ?? '';
+    return e.code == 'failed-precondition' && message.toLowerCase().contains('index');
+  }
+
+  List<Expense> _mapAndSort(QuerySnapshot<Map<String, dynamic>> snap) {
+    final expenses = snap.docs
+        .map((doc) => Expense.fromJson(doc.data(), id: doc.id))
+        .toList();
+    expenses.sort((a, b) => b.date.compareTo(a.date));
+    return expenses;
+  }
+
   @override
   Stream<List<Expense>> watchUserExpenses(String userId) {
-    return _col
+    final primary = _col
         .where('participants', arrayContains: userId)
-        .orderBy('date', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => Expense.fromJson(doc.data(), id: doc.id))
-            .toList());
+        .orderBy('date', descending: true);
+
+    final fallback = _col.where('participants', arrayContains: userId);
+
+    return (() async* {
+      try {
+        await primary.limit(1).get();
+        yield* primary.snapshots().map(_mapAndSort);
+      } on FirebaseException catch (e) {
+        if (!_isIndexError(e)) rethrow;
+        debugPrint('Missing Firestore index for watchUserExpenses. Falling back to client sorting.');
+        yield* fallback.snapshots().map(_mapAndSort);
+      }
+    })();
   }
 
   @override
   Stream<List<Expense>> watchGroupExpenses(String groupId) {
-    return _col
+    final primary = _col
         .where('groupId', isEqualTo: groupId)
-        .orderBy('date', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => Expense.fromJson(doc.data(), id: doc.id))
-            .toList());
+        .orderBy('date', descending: true);
+    final fallback = _col.where('groupId', isEqualTo: groupId);
+
+    return (() async* {
+      try {
+        await primary.limit(1).get();
+        yield* primary.snapshots().map(_mapAndSort);
+      } on FirebaseException catch (e) {
+        if (!_isIndexError(e)) rethrow;
+        debugPrint('Missing Firestore index for watchGroupExpenses. Falling back to client sorting.');
+        yield* fallback.snapshots().map(_mapAndSort);
+      }
+    })();
   }
 
   @override

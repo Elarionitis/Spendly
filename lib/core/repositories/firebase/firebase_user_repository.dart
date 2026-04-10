@@ -25,7 +25,7 @@ class FirebaseUserRepository implements UserRepository {
 
   @override
   Future<List<AppUser>> getUsers() async {
-    final snap = await _col.get();
+    final snap = await _col.snapshots().first;
     return snap.docs
         .map((doc) => AppUser.fromJson(doc.data(), id: doc.id))
         .toList();
@@ -33,7 +33,7 @@ class FirebaseUserRepository implements UserRepository {
 
   @override
   Future<AppUser?> getUserById(String id) async {
-    final doc = await _col.doc(id).get();
+    final doc = await _col.doc(id).snapshots().first;
     if (!doc.exists) return null;
     return AppUser.fromJson(doc.data()!, id: doc.id);
   }

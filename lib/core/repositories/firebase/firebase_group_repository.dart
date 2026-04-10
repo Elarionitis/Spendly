@@ -20,8 +20,10 @@ class FirebaseGroupRepository implements GroupRepository {
 
   @override
   Future<List<Group>> getGroups(String userId) async {
-    final snap =
-        await _col.where('memberIds', arrayContains: userId).get();
+    final snap = await _col
+      .where('memberIds', arrayContains: userId)
+      .snapshots()
+      .first;
     return snap.docs
         .map((doc) => Group.fromJson(doc.data(), id: doc.id))
         .toList();
