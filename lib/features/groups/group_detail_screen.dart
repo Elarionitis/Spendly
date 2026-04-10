@@ -294,7 +294,7 @@ class GroupDetailScreen extends ConsumerWidget {
                   title: 'No expenses yet',
                   subtitle: 'Add the first expense to this group',
                   actionLabel: 'Add Expense',
-                  onAction: () => context.go('/groups/$groupId/add-expense'),
+                  onAction: () => context.push('/groups/$groupId/add-expense'),
                 ),
               ),
             )

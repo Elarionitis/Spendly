@@ -103,7 +103,7 @@ class FriendsScreen extends ConsumerWidget {
                           avatarUrl: friend.avatarUrl,
                           isVerified: friend.isVerified,
                           balance: balance,
-                          onTap: () => context.go('/friends/${friend.id}'),
+                          onTap: () => context.push('/friends/${friend.id}'),
                           onSettle: () => context
                               .push('/settle/select?userId=${friend.id}'),
                           onRemind: balance > 0

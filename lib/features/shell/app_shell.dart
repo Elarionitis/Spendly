@@ -60,9 +60,10 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final currentIndex = _calculateIndex(context);
     final cs = Theme.of(context).colorScheme;
+    final canRoutePop = GoRouter.of(context).canPop();
 
     return PopScope(
-      canPop: false,
+      canPop: canRoutePop,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) _onPopInvoked(context);
       },

@@ -185,7 +185,7 @@ class DashboardScreen extends ConsumerWidget {
                           icon: Icons.add_rounded,
                           label: 'Add\nExpense',
                           color: SpendlyColors.primary,
-                          onTap: () => context.go('/expenses/add'),
+                          onTap: () => context.push('/expenses/add'),
                         ),
                         const SizedBox(width: 12),
                         _buildActionTile(
@@ -193,7 +193,7 @@ class DashboardScreen extends ConsumerWidget {
                           icon: Icons.group_add_rounded,
                           label: 'New\nGroup',
                           color: const Color(0xFF8B5CF6),
-                          onTap: () => context.go('/groups/add'),
+                          onTap: () => context.push('/groups/add'),
                         ),
                         const SizedBox(width: 12),
                         _buildActionTile(
@@ -201,7 +201,7 @@ class DashboardScreen extends ConsumerWidget {
                           icon: Icons.handshake_rounded,
                           label: 'Settle\nUp',
                           color: const Color(0xFF10B981),
-                          onTap: () => context.go('/settle'),
+                          onTap: () => context.push('/settle'),
                         ),
                         const SizedBox(width: 12),
                         _buildActionTile(
@@ -261,7 +261,7 @@ class DashboardScreen extends ConsumerWidget {
                       title: 'No groups yet',
                       subtitle: 'Create a group to start splitting expenses',
                       actionLabel: 'Create Group',
-                      onAction: () => context.go('/groups/add'),
+                      onAction: () => context.push('/groups/add'),
                     ),
                   ),
                 ),
@@ -304,7 +304,7 @@ class DashboardScreen extends ConsumerWidget {
                       title: 'No personal expenses',
                       subtitle: 'Track your personal spending separately',
                       actionLabel: 'Add Expense',
-                      onAction: () => context.go('/personal/add'),
+                      onAction: () => context.push('/personal/add'),
                     ),
                   ),
                 ),
@@ -319,7 +319,7 @@ class DashboardScreen extends ConsumerWidget {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: SpendlyCard(
-                          onTap: () => context.go('/personal/add', extra: {'expenseId': e.id}),
+                          onTap: () => context.push('/personal/add', extra: {'expenseId': e.id}),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 14),
                           child: Row(
@@ -574,7 +574,18 @@ class DashboardScreen extends ConsumerWidget {
                     child: _DashboardSettlementAction(
                       label: 'Reject',
                       isPrimary: false,
-                      onPressed: () => ref.read(settlementActionProvider).rejectSettlement(settlement.id, user!.id),
+                      onPressed: () async {
+                        try {
+                          await ref.read(settlementActionProvider).rejectSettlement(settlement.id, user!.id);
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString().replaceFirst('Exception: ', '')),
+                            ),
+                          );
+                        }
+                      },
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -582,7 +593,18 @@ class DashboardScreen extends ConsumerWidget {
                     child: _DashboardSettlementAction(
                       label: 'Verify',
                       isPrimary: true,
-                      onPressed: () => ref.read(settlementActionProvider).approveSettlement(settlement.id, user!.id),
+                      onPressed: () async {
+                        try {
+                          await ref.read(settlementActionProvider).approveSettlement(settlement.id, user!.id);
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString().replaceFirst('Exception: ', '')),
+                            ),
+                          );
+                        }
+                      },
                     ),
                   ),
                 ],

@@ -23,7 +23,7 @@ class GroupsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.add_rounded),
-            onPressed: () => context.go('/groups/add'),
+            onPressed: () => context.push('/groups/add'),
           ),
         ],
       ),
@@ -45,7 +45,7 @@ class GroupsScreen extends ConsumerWidget {
                       subtitle:
                           'Create a group to start splitting expenses with friends',
                       actionLabel: 'Create Group',
-                      onAction: () => context.go('/groups/add'),
+                      onAction: () => context.push('/groups/add'),
                     ),
                   ),
                 ),
@@ -63,7 +63,7 @@ class GroupsScreen extends ConsumerWidget {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: SpendlyCard(
-                      onTap: () => context.go('/groups/${group.id}'),
+                      onTap: () => context.push('/groups/${group.id}'),
                       padding: const EdgeInsets.all(18),
                       child: Row(
                         children: [
@@ -154,7 +154,7 @@ class GroupsScreen extends ConsumerWidget {
               ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/groups/add'),
+        onPressed: () => context.push('/groups/add'),
         icon: const Icon(Icons.add_rounded),
         label: const Text('New Group'),
       ),

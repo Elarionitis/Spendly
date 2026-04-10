@@ -163,7 +163,18 @@ class FriendDetailScreen extends ConsumerWidget {
                     children: [
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () => ref.read(settlementActionProvider).rejectSettlement(s.id, user!.id),
+                          onPressed: () async {
+                            try {
+                              await ref.read(settlementActionProvider).rejectSettlement(s.id, user!.id);
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(e.toString().replaceFirst('Exception: ', '')),
+                                ),
+                              );
+                            }
+                          },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: SpendlyColors.danger,
                             side: const BorderSide(color: SpendlyColors.danger),
@@ -175,7 +186,18 @@ class FriendDetailScreen extends ConsumerWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () => ref.read(settlementActionProvider).approveSettlement(s.id, user!.id),
+                          onPressed: () async {
+                            try {
+                              await ref.read(settlementActionProvider).approveSettlement(s.id, user!.id);
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(e.toString().replaceFirst('Exception: ', '')),
+                                ),
+                              );
+                            }
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: SpendlyColors.success,
                             foregroundColor: Colors.white,
