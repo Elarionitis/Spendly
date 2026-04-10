@@ -25,11 +25,30 @@ final settlementActionProvider = Provider<SettlementActionNotifier>((ref) {
 
 class SettlementActionNotifier {
   final Ref _ref;
+  static const int _maxVerificationAttempts = 3;
 
   SettlementActionNotifier(this._ref);
 
-  Future<void> createSettlement(Settlement settlement, {dynamic imageFile}) => 
-    _ref.read(settlementRepositoryProvider).addSettlement(settlement, imageFile: imageFile);
+  Future<void> createSettlement(Settlement settlement, {dynamic imageFile}) async {
+    if (settlement.fromUserId == settlement.toUserId) {
+      throw Exception('Invalid settlement: payer and payee cannot be the same user.');
+    }
+    if ((settlement.transactionId == null || settlement.transactionId!.trim().isEmpty) &&
+        settlement.proofUrl == null &&
+        settlement.proofImagePath == null &&
+        imageFile == null) {
+      throw Exception('Please provide a transaction ID or payment proof.');
+    }
+
+    final pendingSettlement = settlement.copyWith(
+      status: SettlementStatus.pendingVerification,
+      verificationAttempts: settlement.verificationAttempts,
+    );
+
+    await _ref
+        .read(settlementRepositoryProvider)
+        .addSettlement(pendingSettlement, imageFile: imageFile);
+  }
 
   Future<void> settleUp(String friendId, double amount) async {
     final user = _ref.read(authProvider);
@@ -40,7 +59,7 @@ class SettlementActionNotifier {
       fromUserId: user.id,
       toUserId: friendId,
       amount: amount,
-      status: SettlementStatus.verified,
+      status: SettlementStatus.pendingVerification,
       createdAt: DateTime.now(),
     );
 
@@ -49,20 +68,35 @@ class SettlementActionNotifier {
   
   Future<void> approveSettlement(String id, String userId) async {
     final settlements = _ref.read(settlementsStreamProvider).value ?? [];
-    final s = settlements.firstWhere((s) => s.id == id);
+    final s = settlements.firstWhere(
+      (s) => s.id == id,
+      orElse: () => throw Exception('Settlement not found.'),
+    );
+    if (s.status == SettlementStatus.verified) return;
+    if (s.status == SettlementStatus.rejected) {
+      throw Exception('Rejected settlement cannot be approved. Please submit a new request.');
+    }
+    if (s.fromUserId == userId) {
+      throw Exception('Payer cannot self-approve settlement.');
+    }
     if (s.approvals.contains(userId)) return;
-    
+    if (s.rejections.contains(userId)) {
+      throw Exception('You already rejected this settlement. Ask payer to resubmit.');
+    }
+
     final newApprovals = [...s.approvals, userId];
     final newRejections = s.rejections.where((r) => r != userId).toList();
-    
-    bool isFullyVerified = false;
-    if (s.toUserId == userId) {
-      isFullyVerified = true;
+    final requiredApprovals = _requiredApprovalsFor(s);
+    final isFullyVerified = newApprovals.length >= requiredApprovals;
+
+    if (s.groupId == null && userId != s.toUserId) {
+      throw Exception('Only the payee can verify this settlement.');
     }
 
     await _ref.read(settlementRepositoryProvider).updateStatus(
       id, 
       isFullyVerified ? SettlementStatus.verified : s.status,
+      verificationAttempts: s.verificationAttempts,
       approvals: newApprovals,
       rejections: newRejections,
     );
@@ -70,14 +104,33 @@ class SettlementActionNotifier {
 
   Future<void> rejectSettlement(String id, String userId, {String? reason}) async {
     final settlements = _ref.read(settlementsStreamProvider).value ?? [];
-    final s = settlements.firstWhere((s) => s.id == id);
+    final s = settlements.firstWhere(
+      (s) => s.id == id,
+      orElse: () => throw Exception('Settlement not found.'),
+    );
+    if (s.status == SettlementStatus.verified) {
+      throw Exception('Verified settlement cannot be rejected.');
+    }
+    if (s.fromUserId == userId) {
+      throw Exception('Payer cannot reject own settlement request.');
+    }
+    if (s.verificationAttempts >= _maxVerificationAttempts) {
+      throw Exception('Maximum verification retries reached. Please create a new settlement request.');
+    }
+
+    if (s.groupId == null && userId != s.toUserId) {
+      throw Exception('Only the payee can reject this settlement.');
+    }
+
     final newRejections = [...s.rejections, userId];
     final newApprovals = s.approvals.where((a) => a != userId).toList();
+    final nextAttempts = s.verificationAttempts + 1;
 
     await _ref.read(settlementRepositoryProvider).updateStatus(
       id, 
       SettlementStatus.rejected,
       rejectionReason: reason,
+      verificationAttempts: nextAttempts,
       approvals: newApprovals,
       rejections: newRejections,
     );
@@ -85,6 +138,21 @@ class SettlementActionNotifier {
 
   Future<void> updateTransactionId(String id, String transactionId) => 
     _ref.read(settlementRepositoryProvider).updateTransactionId(id, transactionId);
+
+  int _requiredApprovalsFor(Settlement settlement) {
+    if (settlement.groupId == null || settlement.groupId!.isEmpty) {
+      return 1;
+    }
+
+    final groups = _ref.read(groupProvider);
+    final group = groups.where((g) => g.id == settlement.groupId).firstOrNull;
+    if (group == null) {
+      return 1;
+    }
+
+    final sixtyPercent = (group.memberIds.length * 0.6).ceil();
+    return sixtyPercent < 1 ? 1 : sixtyPercent;
+  }
 }
 
 // Keep settlementProvider as a list of settlements for compatibility

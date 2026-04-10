@@ -340,7 +340,7 @@ class _SettlementsScreenState extends ConsumerState<SettlementsScreen> {
     return StatusBadge.pending();
   }
 
-  void _initiateSettlement() {
+  Future<void> _initiateSettlement() async {
     final user = ref.read(authProvider);
     if (user == null || _selectedFriendId == null) return;
 
@@ -361,11 +361,27 @@ class _SettlementsScreenState extends ConsumerState<SettlementsScreen> {
       proofImagePath: _proofImagePath,
     );
 
-    ref.read(settlementActionProvider).createSettlement(s);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settlement request submitted ✓')));
-    setState(() { _selectedFriendId = null; _proofImagePath = null; });
-    _amountController.clear();
-    _txnController.clear();
+    try {
+      await ref.read(settlementActionProvider).createSettlement(
+            s,
+            imageFile: _proofImagePath != null ? File(_proofImagePath!) : null,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Settlement request submitted ✓')),
+      );
+      setState(() {
+        _selectedFriendId = null;
+        _proofImagePath = null;
+      });
+      _amountController.clear();
+      _txnController.clear();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
   void _showProofDialog(BuildContext context, String url) {
@@ -437,9 +453,17 @@ class _ActionButtonState extends State<_ActionButton> {
           )
         : TextButton(
             onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
               setState(() => _loading = true);
               try {
                 await widget.onPressed();
+              } catch (e) {
+                if (!mounted) return;
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString().replaceFirst('Exception: ', '')),
+                  ),
+                );
               } finally {
                 if (mounted) setState(() => _loading = false);
               }

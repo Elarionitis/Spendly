@@ -16,6 +16,7 @@ abstract class SettlementRepository {
     String id,
     SettlementStatus status, {
     String? rejectionReason,
+    int? verificationAttempts,
     List<String>? approvals,
     List<String>? rejections,
   });

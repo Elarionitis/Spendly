@@ -66,6 +66,7 @@ class DemoSettlementRepository implements SettlementRepository {
     String id,
     SettlementStatus status, {
     String? rejectionReason,
+    int? verificationAttempts,
     List<String>? approvals,
     List<String>? rejections,
   }) async {
@@ -74,6 +75,7 @@ class DemoSettlementRepository implements SettlementRepository {
       _settlements[idx] = _settlements[idx].copyWith(
         status: status,
         rejectionReason: rejectionReason,
+        verificationAttempts: verificationAttempts,
         approvals: approvals,
         rejections: rejections,
       );

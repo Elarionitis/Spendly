@@ -14,6 +14,7 @@ class Settlement {
   final String? proofImagePath;
   final String? groupId;
   final String? rejectionReason;
+  final int verificationAttempts;
   final List<String> approvals;
   final List<String> rejections;
 
@@ -29,6 +30,7 @@ class Settlement {
     this.proofImagePath,
     this.groupId,
     this.rejectionReason,
+    this.verificationAttempts = 0,
     this.approvals = const [],
     this.rejections = const [],
   });
@@ -50,6 +52,7 @@ class Settlement {
       proofUrl: json['proofUrl'] as String?,
       groupId: json['groupId'] as String?,
       rejectionReason: json['rejectionReason'] as String?,
+      verificationAttempts: (json['verificationAttempts'] as num?)?.toInt() ?? 0,
       approvals: List<String>.from(json['approvals'] ?? []),
       rejections: List<String>.from(json['rejections'] ?? []),
     );
@@ -67,6 +70,7 @@ class Settlement {
       if (proofUrl != null) 'proofUrl': proofUrl,
       if (groupId != null) 'groupId': groupId,
       if (rejectionReason != null) 'rejectionReason': rejectionReason,
+      'verificationAttempts': verificationAttempts,
       'approvals': approvals,
       'rejections': rejections,
     };
@@ -84,6 +88,7 @@ class Settlement {
     String? proofImagePath,
     String? groupId,
     String? rejectionReason,
+    int? verificationAttempts,
     List<String>? approvals,
     List<String>? rejections,
     bool clearProofImage = false,
@@ -101,6 +106,7 @@ class Settlement {
           clearProofImage ? null : (proofImagePath ?? this.proofImagePath),
       groupId: groupId ?? this.groupId,
       rejectionReason: rejectionReason ?? this.rejectionReason,
+      verificationAttempts: verificationAttempts ?? this.verificationAttempts,
       approvals: approvals ?? this.approvals,
       rejections: rejections ?? this.rejections,
     );
