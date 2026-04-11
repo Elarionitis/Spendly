@@ -36,8 +36,25 @@ class SettlementActionNotifier {
       throw Exception('You must be logged in to create a settlement.');
     }
 
+    if (settlement.amount <= _epsilon) {
+      throw Exception('Settlement amount must be greater than zero.');
+    }
+
     if (settlement.fromUserId == settlement.toUserId) {
       throw Exception('Invalid settlement: payer and payee cannot be the same user.');
+    }
+
+    final outstanding = _outstandingAmountForCurrentUser(
+      settlement: settlement,
+      currentUserId: currentUser.id,
+    );
+    if (outstanding <= _epsilon) {
+      throw Exception('No pending balance remains for this settlement.');
+    }
+    if (settlement.amount > outstanding + _epsilon) {
+      throw Exception(
+        'Settlement amount exceeds pending balance (max ${outstanding.toStringAsFixed(2)}).',
+      );
     }
 
     final all = await _ref
@@ -236,6 +253,42 @@ class SettlementActionNotifier {
     final groupA = (a.groupId ?? '').trim();
     final groupB = (b.groupId ?? '').trim();
     return (sameDirection || reverseDirection) && groupA == groupB;
+  }
+
+  double _outstandingAmountForCurrentUser({
+    required Settlement settlement,
+    required String currentUserId,
+  }) {
+    final isCurrentUserPayer = settlement.fromUserId == currentUserId;
+    final isCurrentUserPayee = settlement.toUserId == currentUserId;
+    if (!isCurrentUserPayer && !isCurrentUserPayee) {
+      throw Exception('You can only create settlements for your own balances.');
+    }
+
+    final friendId = isCurrentUserPayer ? settlement.toUserId : settlement.fromUserId;
+    final normalizedGroupId = (settlement.groupId ?? '').trim();
+
+    double balance;
+    if (normalizedGroupId.isEmpty) {
+      final balances = _ref.read(globalBalancesProvider);
+      balance = balances[friendId] ?? 0.0;
+    } else {
+      final groupBalances = _ref.read(groupBalancesWithFriendProvider(friendId));
+      final record = groupBalances.where((g) => g['groupId'] == normalizedGroupId).firstOrNull;
+      balance = (record?['balance'] as double?) ?? 0.0;
+    }
+
+    if (isCurrentUserPayer) {
+      if (balance >= -_epsilon) {
+        return 0.0;
+      }
+      return -balance;
+    }
+
+    if (balance <= _epsilon) {
+      return 0.0;
+    }
+    return balance;
   }
 
   Future<void> _closeSupersededPending(

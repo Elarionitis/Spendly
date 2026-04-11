@@ -480,6 +480,17 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
       return;
     }
 
+    if (amount - balance.abs() > 0.01) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Amount exceeds pending balance. Max allowed: ${balance.abs().toStringAsFixed(2)}',
+          ),
+        ),
+      );
+      return;
+    }
+
     // Determine payer direction
     final String fromUserId;
     final String toUserId;
