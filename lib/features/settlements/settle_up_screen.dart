@@ -159,7 +159,7 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                   style: AppTextStyles.sectionLabel()),
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 decoration: BoxDecoration(
                   color: cs.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
@@ -170,6 +170,23 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                   hint: const Text('Select friend'),
                   isExpanded: true,
                   underline: const SizedBox.shrink(),
+                  selectedItemBuilder: (context) => friends
+                      .map(
+                        (u) => Row(
+                          children: [
+                            UserAvatar(name: u.name, userId: u.id, size: 28),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                u.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      .toList(),
                   items: friends
                       .map((u) => DropdownMenuItem<String>(
                             value: u.id,
@@ -177,7 +194,13 @@ class _SettleUpScreenState extends ConsumerState<SettleUpScreen> {
                               children: [
                                 UserAvatar(name: u.name, userId: u.id, size: 28),
                                 const SizedBox(width: 10),
-                                Text(u.name),
+                                Expanded(
+                                  child: Text(
+                                    u.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                               ],
                             ),
                           ))
