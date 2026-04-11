@@ -36,7 +36,7 @@ Built with a **Feature-First Architecture**, Spendly ensures scalability and mai
 
 ### 👥 Group Management & Settlements
 *   **Shared Ledgers**: Create groups for specific events or households.
-*   **Smart Settlements**: Algorithm-driven debt simplification to minimize the number of transactions needed to settle up.
+*   **Smart Settlements**: Algorithm-driven debt simplification with robust provider synchronization to ensure accurate "settle up" flows.
 *   **Comments & Interaction**: Discuss specific expenses within the app to clarify costs.
 
 ### 🛠 Core Utilities
@@ -121,11 +121,14 @@ lib/
 ## 📖 Usage
 
 ### State Management Example (Riverpod)
-Spendly uses Riverpod for reactive state. Here is how the expense state is typically accessed:
+Spendly uses Riverpod for reactive state. Here is how the expense and settlement states are typically accessed and synchronized:
 
 dart
 // Accessing the expense provider
 final expenseList = ref.watch(expenseProvider);
+
+// Monitoring settlement synchronization
+final settlementState = ref.watch(settlementProvider);
 
 expenseList.when(
   data: (expenses) => ListView.builder(
