@@ -36,9 +36,9 @@ class TransactionDetailScreen extends ConsumerWidget {
     }
     
     final expense = expenses[expenseIdx];
-    final group = expense.groupId != null 
-        ? ref.watch(groupProvider).firstWhere((g) => g.id == expense.groupId, orElse: () => null as dynamic)
-        : null;
+    final group = expense.groupId != null
+      ? ref.watch(groupProvider).where((g) => g.id == expense.groupId).firstOrNull
+      : null;
     
     final currentUser = ref.watch(authProvider);
     final comments = ref.watch(commentsForTargetProvider(expenseId));

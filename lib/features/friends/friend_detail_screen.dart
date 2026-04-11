@@ -60,7 +60,7 @@ class FriendDetailScreen extends ConsumerWidget {
               if (e.groupId != null) {
                 context.push('/groups/${e.groupId}/expense/${e.id}');
               } else {
-                context.push('/groups/none/expense/${e.id}');
+                context.push('/expenses/${e.id}');
               }
             },
             child: SpendlyCard(
