@@ -80,8 +80,12 @@ class ActivityScreen extends ConsumerWidget {
     if (event.type == ActivityType.expenseAdded) {
       final groupId = event.metadata?['groupId'] as String?;
       final expenseId = event.metadata?['expenseId'] as String?;
-      if (groupId != null && expenseId != null) {
-        context.push('/groups/$groupId/expense/$expenseId');
+      if (expenseId != null) {
+        if (groupId != null && groupId.isNotEmpty) {
+          context.push('/groups/$groupId/expense/$expenseId');
+        } else {
+          context.push('/expenses/$expenseId');
+        }
       }
     } else if (event.type == ActivityType.settled) {
       // Navigate to settlements screen

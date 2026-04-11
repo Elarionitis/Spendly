@@ -194,7 +194,7 @@ class _PersonalExpensesScreenState
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: SpendlyCard(
-                            onTap: () => context.push('/groups/none/expense/${e.id}'),
+                            onTap: () => context.push('/expenses/${e.id}'),
                             padding: const EdgeInsets.all(14),
                             child: Row(
                               children: [
