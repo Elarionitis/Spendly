@@ -182,6 +182,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
           GoRoute(
+            path: '/expenses/:expenseId',
+            name: 'expense-detail',
+            builder: (context, state) {
+              final expenseId = state.pathParameters['expenseId']!;
+              return TransactionDetailScreen(expenseId: expenseId);
+            },
+          ),
+          GoRoute(
             path: '/personal',
             name: 'personal',
             builder: (context, state) => const PersonalExpensesScreen(),

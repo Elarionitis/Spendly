@@ -10,6 +10,8 @@ final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>(
 );
 
 class ThemeModeNotifier extends StateNotifier<ThemeMode> {
+  bool _isPersisting = false;
+
   ThemeModeNotifier() : super(ThemeMode.system) {
     _restoreThemeMode();
   }
@@ -29,22 +31,29 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   }
 
   Future<void> toggle() async {
+    if (_isPersisting) return;
     final next = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
     await set(next);
   }
 
   Future<void> set(ThemeMode mode) async {
+    if (_isPersisting) return;
+    _isPersisting = true;
     state = mode;
-    final prefs = await SharedPreferences.getInstance();
-    if (mode == ThemeMode.light) {
-      await prefs.setString(_themeModeKey, 'light');
-      return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mode == ThemeMode.light) {
+        await prefs.setString(_themeModeKey, 'light');
+        return;
+      }
+      if (mode == ThemeMode.dark) {
+        await prefs.setString(_themeModeKey, 'dark');
+        return;
+      }
+      await prefs.remove(_themeModeKey);
+    } finally {
+      _isPersisting = false;
     }
-    if (mode == ThemeMode.dark) {
-      await prefs.setString(_themeModeKey, 'dark');
-      return;
-    }
-    await prefs.remove(_themeModeKey);
   }
 
   bool get isDark => state == ThemeMode.dark;
