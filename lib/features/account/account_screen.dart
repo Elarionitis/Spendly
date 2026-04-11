@@ -108,19 +108,16 @@ class AccountScreen extends ConsumerWidget {
           Consumer(builder: (context, ref, _) {
             final themeMode = ref.watch(themeModeProvider);
             final isDark = themeMode == ThemeMode.dark;
-            return ListTile(
+            return SwitchListTile.adaptive(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              leading: Icon(
+              secondary: Icon(
                 isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
                 color: SpendlyColors.neutral600,
               ),
               title: Text('Dark Mode', style: AppTextStyles.bodyPrimary()),
-              trailing: Switch.adaptive(
-                value: isDark,
-                activeThumbColor: SpendlyColors.primary,
-                onChanged: (_) => ref.read(themeModeProvider.notifier).toggle(),
-              ),
-              onTap: () => ref.read(themeModeProvider.notifier).toggle(),
+              value: isDark,
+              activeThumbColor: SpendlyColors.primary,
+              onChanged: (_) => ref.read(themeModeProvider.notifier).toggle(),
             );
           }),
           _SettingsTile(

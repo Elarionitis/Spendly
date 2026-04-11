@@ -319,7 +319,7 @@ class DashboardScreen extends ConsumerWidget {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 10),
                         child: SpendlyCard(
-                          onTap: () => context.push('/personal/add', extra: {'expenseId': e.id}),
+                          onTap: () => context.push('/expenses/${e.id}'),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 14),
                           child: Row(
