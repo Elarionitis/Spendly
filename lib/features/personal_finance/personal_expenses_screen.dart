@@ -183,13 +183,29 @@ class _PersonalExpensesScreenState
                           child: const Icon(Icons.delete_outline,
                               color: SpendlyColors.danger),
                         ),
-                        onDismissed: (_) {
-                          ref.read(expenseActionProvider).deleteExpense(e.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('${e.description} deleted'),
-                            ),
-                          );
+                        confirmDismiss: (_) async {
+                          try {
+                            await ref.read(expenseActionProvider).deleteExpense(e.id);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('${e.description} deleted'),
+                                ),
+                              );
+                            }
+                            return true;
+                          } catch (err) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    err.toString().replaceFirst('Bad state: ', ''),
+                                  ),
+                                ),
+                              );
+                            }
+                            return false;
+                          }
                         },
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: 10),
