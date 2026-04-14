@@ -248,10 +248,21 @@ class TransactionDetailScreen extends ConsumerWidget {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(
-            onPressed: () {
-              ref.read(expenseActionProvider).deleteExpense(expense.id);
-              Navigator.pop(ctx);
-              context.pop();
+            onPressed: () async {
+              try {
+                await ref.read(expenseActionProvider).deleteExpense(expense.id);
+                if (context.mounted) {
+                  Navigator.pop(ctx);
+                  context.pop();
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.toString().replaceFirst('Bad state: ', ''))),
+                  );
+                }
+              }
             },
             style: TextButton.styleFrom(foregroundColor: SpendlyColors.danger),
             child: const Text('Delete'),

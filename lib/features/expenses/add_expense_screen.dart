@@ -34,6 +34,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _descController = TextEditingController();
   final _descFocusNode = FocusNode();
   String? _paidById;
+  bool _isAdjustingSplitInput = false;
   
   ExpenseType _expenseType = ExpenseType.personal;
   String? _selectedGroupId;
@@ -160,6 +161,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     final friends = ref.watch(friendsProvider);
     final currentUser = ref.watch(authProvider);
     final amount = double.tryParse(_amountController.text) ?? 0;
+    final participants = _currentParticipants;
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -197,7 +199,6 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                const SizedBox(height: 10),
                DropdownButtonFormField<String>(
                  initialValue: _selectedGroupId,
-                 value: _selectedGroupId,
                  items: groups.map((g) => DropdownMenuItem(value: g.id, child: Text(g.name))).toList(),
                  onChanged: (val) => setState(() {
                    _selectedGroupId = val;
@@ -269,13 +270,12 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             const SizedBox(height: 20),
 
             // ── 2. Paid by ──────────────────────────────────────────────────
-            if (_currentParticipants.length > 1) ...[
+            if (participants.length > 1) ...[
               Text('Paid by', style: AppTextStyles.sectionLabel()),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
                 initialValue: _paidById ?? currentUser?.id,
-                value: _paidById ?? currentUser?.id,
-                items: _currentParticipants.map((id) {
+                items: participants.map((id) {
                   final u = ref.read(userByIdProvider(id));
                   final name = id == currentUser?.id ? 'You' : (u?.name.split(' ').first ?? id);
                   return DropdownMenuItem(value: id, child: Text(name));
@@ -325,8 +325,12 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             ),
             const SizedBox(height: 24),
 
-            if (_currentParticipants.isNotEmpty && amount > 0)
-              _buildSplitPreview(amount, currentUser?.id ?? ''),
+            if (participants.isNotEmpty && amount > 0)
+              _buildSplitPreview(
+                amount,
+                currentUser?.id ?? '',
+                participants,
+              ),
 
             const SizedBox(height: 20),
             _buildReceiptPicker(),
@@ -354,7 +358,60 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
   }
 
-  Widget _buildSplitPreview(double amount, String currentUserId) {
+  double _round2(double value) => double.parse(value.toStringAsFixed(2));
+
+  double _exactEnteredTotal(List<String> participants) {
+    var total = 0.0;
+    for (final memberId in participants) {
+      final value = double.tryParse(_splitControllers[memberId]?.text ?? '') ?? 0;
+      total += value;
+    }
+    return _round2(total);
+  }
+
+  void _showInlineError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _handleExactSplitChanged({
+    required String memberId,
+    required String nextValue,
+    required double amount,
+    required List<String> participants,
+  }) {
+    if (_isAdjustingSplitInput) return;
+
+    final parsed = double.tryParse(nextValue) ?? 0;
+    final clamped = parsed < 0 ? 0.0 : parsed;
+
+    var otherTotal = 0.0;
+    for (final id in participants) {
+      if (id == memberId) continue;
+      otherTotal += double.tryParse(_splitControllers[id]?.text ?? '') ?? 0;
+    }
+
+    final allowedForMember = _round2((amount - otherTotal).clamp(0.0, amount));
+    if (clamped > allowedForMember + 0.001) {
+      final controller = _splitControllers[memberId]!;
+      _isAdjustingSplitInput = true;
+      final adjustedText = allowedForMember == 0
+          ? '0'
+          : allowedForMember.toStringAsFixed(allowedForMember % 1 == 0 ? 0 : 2);
+      controller.value = TextEditingValue(
+        text: adjustedText,
+        selection: TextSelection.collapsed(offset: adjustedText.length),
+      );
+      _isAdjustingSplitInput = false;
+      _showInlineError('You cannot add extra money. Remaining amount is ₹ ${allowedForMember.toStringAsFixed(2)}.');
+    }
+
+    setState(() {});
+  }
+
+  Widget _buildSplitPreview(double amount, String currentUserId, List<String> participants) {
+    final exactTotal = _splitType == SplitType.exact ? _exactEnteredTotal(participants) : 0.0;
+    final exactRemaining = _splitType == SplitType.exact ? _round2(amount - exactTotal) : 0.0;
+
     return SpendlyCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -362,13 +419,13 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         children: [
           Text('Split Preview', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
-          ..._currentParticipants.map((memberId) {
+          ...participants.map((memberId) {
             final memberUser = ref.read(userByIdProvider(memberId));
             final name = memberId == currentUserId ? 'You' : (memberUser?.name.split(' ').first ?? memberId);
 
             double share;
             if (_splitType == SplitType.equal) {
-              share = amount / _currentParticipants.length;
+              share = amount / participants.length;
             } else {
               share = double.tryParse(_splitControllers[memberId]?.text ?? '') ?? 0;
               if (_splitType == SplitType.percentage) share = (amount * share) / 100;
@@ -399,13 +456,55 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                               suffixText: _splitType == SplitType.percentage ? '%' : null,
                               prefixText: _splitType == SplitType.exact ? '₹ ' : null,
                             ),
-                            onChanged: (_) => setState(() {}),
+                            onChanged: (value) {
+                              if (_splitType == SplitType.exact) {
+                                _handleExactSplitChanged(
+                                  memberId: memberId,
+                                  nextValue: value,
+                                  amount: amount,
+                                  participants: participants,
+                                );
+                                return;
+                              }
+                              setState(() {});
+                            },
                           ),
                         ),
                       ],
                     ),
             );
           }),
+          if (_splitType == SplitType.exact) ...[
+            const Divider(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Entered', style: AppTextStyles.caption(color: SpendlyColors.neutral500)),
+                Text(
+                  '₹ ${exactTotal.toStringAsFixed(2)}',
+                  style: AppTextStyles.bodyPrimary().copyWith(fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Remaining', style: AppTextStyles.caption(color: SpendlyColors.neutral500)),
+                Text(
+                  '₹ ${exactRemaining.toStringAsFixed(2)}',
+                  style: AppTextStyles.bodyPrimary().copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: exactRemaining < 0
+                        ? SpendlyColors.danger
+                        : exactRemaining == 0
+                            ? SpendlyColors.success
+                            : SpendlyColors.warning,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -475,8 +574,33 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         }
         
         // Exact split validation
-        if ((totalSplit - amount).abs() > 0.1) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Split amounts (₹$totalSplit) must equal total (₹$amount)')));
+        final difference = _round2(totalSplit - amount);
+        if (_splitType == SplitType.exact && difference > 0.01) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'You cannot add extra money. Remove ₹ ${difference.toStringAsFixed(2)} from exact splits.',
+              ),
+            ),
+          );
+          setState(() => _isUploading = false);
+          return;
+        }
+        if (_splitType == SplitType.exact && difference < -0.01) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '₹ ${difference.abs().toStringAsFixed(2)} is still remaining to assign.',
+              ),
+            ),
+          );
+          setState(() => _isUploading = false);
+          return;
+        }
+        if (_splitType == SplitType.percentage && difference.abs() > 0.1) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Split percentages must total 100%.')),
+          );
           setState(() => _isUploading = false);
           return;
         }
