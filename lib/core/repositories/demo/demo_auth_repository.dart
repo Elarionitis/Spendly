@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import '../../models/app_user.dart';
 import '../auth_repository.dart';
 import '../user_repository.dart';
@@ -63,7 +64,7 @@ class DemoAuthRepository implements AuthRepository {
     final user = users.length > 2 ? users[2] : users.first;
     _currentUser = user;
     _controller.add(_currentUser);
-    print("DEMO Google Sign-In SUCCESS: ${user.email}");
+    debugPrint('DEMO Google Sign-In SUCCESS: ${user.email}');
   }
 
   @override

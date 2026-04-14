@@ -104,6 +104,78 @@ class FirebaseExpenseRepository implements ExpenseRepository {
 
   @override
   Future<void> deleteExpense(String id) async {
+    final doc = await _col.doc(id).get();
+    if (!doc.exists || doc.data() == null) return;
+
+    final expense = Expense.fromJson(doc.data()!, id: doc.id);
+    final hasVerifiedSettlement = await _hasVerifiedSettlementAfterExpense(expense);
+    if (hasVerifiedSettlement) {
+      throw StateError(
+        'This expense cannot be deleted because a verified settlement already depends on it.',
+      );
+    }
+
     await _col.doc(id).delete();
+  }
+
+  Future<bool> _hasVerifiedSettlementAfterExpense(Expense expense) async {
+    final settlementsCol = _db.collection('settlements');
+
+    DateTime parseCreatedAt(dynamic raw) {
+      if (raw is int) return DateTime.fromMillisecondsSinceEpoch(raw);
+      if (raw is Timestamp) return raw.toDate();
+      return DateTime.fromMillisecondsSinceEpoch(0);
+    }
+
+    bool isVerified(Map<String, dynamic> data) => data['status'] == 'verified';
+
+    final cutoff = expense.date.subtract(const Duration(seconds: 1));
+    final normalizedGroupId = (expense.groupId ?? '').trim();
+
+    if (normalizedGroupId.isNotEmpty) {
+      final groupSettlements = await settlementsCol
+          .where('groupId', isEqualTo: normalizedGroupId)
+          .get();
+
+      return groupSettlements.docs.any((doc) {
+        final data = doc.data();
+        if (!isVerified(data)) return false;
+        final createdAt = parseCreatedAt(data['createdAt']);
+        return !createdAt.isBefore(cutoff);
+      });
+    }
+
+    final counterpartIds = expense.participants
+        .where((id) => id != expense.paidById)
+        .toSet();
+
+    for (final counterpartId in counterpartIds) {
+      final directional = await settlementsCol
+          .where('fromUser', isEqualTo: expense.paidById)
+          .where('toUser', isEqualTo: counterpartId)
+          .get();
+      final reverse = await settlementsCol
+          .where('fromUser', isEqualTo: counterpartId)
+          .where('toUser', isEqualTo: expense.paidById)
+          .get();
+
+      final directionalMatch = directional.docs.any((doc) {
+        final data = doc.data();
+        if (!isVerified(data)) return false;
+        final createdAt = parseCreatedAt(data['createdAt']);
+        return !createdAt.isBefore(cutoff);
+      });
+      if (directionalMatch) return true;
+
+      final reverseMatch = reverse.docs.any((doc) {
+        final data = doc.data();
+        if (!isVerified(data)) return false;
+        final createdAt = parseCreatedAt(data['createdAt']);
+        return !createdAt.isBefore(cutoff);
+      });
+      if (reverseMatch) return true;
+    }
+
+    return false;
   }
 }
